@@ -304,7 +304,7 @@ VALUES
 
 
 -- ============================================================
--- 4. INSTRUMENT - 10 rows
+-- 4. INSTRUMENT - 13 rows
 -- ============================================================
 -- Includes TRADING, HALTED and RETIRED.
 -- ============================================================
@@ -376,7 +376,29 @@ VALUES
  'OLD1',
  'Retired Investment Fund',
  'FUND',
- 'RETIRED');
+ 'RETIRED'),
+    
+(
+    2011,
+    'INFY.NS',
+    'Infosys Ltd',
+    'EQUITY',
+    'TRADING'
+),
+(
+    2012,
+    'RELIANCE.NS',
+    'Reliance Industries Ltd',
+    'EQUITY',
+    'TRADING'
+),
+(
+    2013,
+    'TATASTEEL.BO',
+    'Tata Steel Ltd',
+    'EQUITY',
+    'TRADING'
+);
 
 
 -- ============================================================
