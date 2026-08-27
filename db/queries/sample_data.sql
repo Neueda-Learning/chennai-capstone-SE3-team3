@@ -364,8 +364,8 @@ VALUES
  'SPY',
  'SPDR S&P 500 ETF Trust',
  'ETF',
- 'TRADING')
-
+ 'TRADING'),
+    
 (2011,
  'INFY.NS',
  'Infosys LTD',
