@@ -676,7 +676,7 @@ pytest analytics/tests/test_etl_pipeline.py -q
 ## Default Run
 
 ```bash
-python -m analytics.etl_pipeline.etl_pipeline
+python -m analytics.src.etl_pipeline
 ````
 
 * Runs the complete ETL pipeline using configured defaults.
@@ -696,7 +696,7 @@ python -m analytics.etl_pipeline.etl_pipeline
 ## RELIANCE
 
 ```bash
-python -m analytics.etl_pipeline.etl_pipeline --symbol RELIANCE.NS --fixture analytics/mock_data/candles-reliance-ns-2026-07.json
+python -m analytics.src.etl_pipeline --symbol RELIANCE.NS --fixture analytics/mock_data/candles-reliance-ns-2026-07.json
 ```
 
 * Overrides the configured default symbol.
@@ -707,7 +707,7 @@ python -m analytics.etl_pipeline.etl_pipeline --symbol RELIANCE.NS --fixture ana
 ## INFY
 
 ```bash
-python -m analytics.etl_pipeline.etl_pipeline --symbol INFY.NS --fixture analytics/mock_data/candles-infy-ns-2026-07.json
+python -m analytics.src.etl_pipeline --symbol INFY.NS --fixture analytics/mock_data/candles-infy-ns-2026-07.json
 ```
 
 * Overrides the configured default symbol.
@@ -719,7 +719,7 @@ python -m analytics.etl_pipeline.etl_pipeline --symbol INFY.NS --fixture analyti
 ## Malformed Fixture
 
 ```bash
-python -m analytics.etl_pipeline.etl_pipeline \
+python -m analytics.src.etl_pipeline \
     --symbol BSE.TEST \
     --fixture analytics/mock_data/candles-malformed.json
 ```
@@ -733,7 +733,7 @@ python -m analytics.etl_pipeline.etl_pipeline \
 ## Custom API Request Range
 
 ```bash
-python -m analytics.etl_pipeline.etl_pipeline \
+python -m analytics.src.etl_pipeline \
     --symbol RELIANCE.NS \
     --from-date 2026-07-01 \
     --to-date 2026-07-31 \
@@ -749,7 +749,7 @@ python -m analytics.etl_pipeline.etl_pipeline \
 ## Custom Fixture
 
 ```bash
-python -m analytics.etl_pipeline.etl_pipeline \
+python -m analytics.src.etl_pipeline \
     --symbol INFY.NS \
     --fixture analytics/mock_data/candles-infy-ns-2026-07.json
 ```

@@ -59,7 +59,6 @@ def extract(symbol: str, from_date: str, to_date: str, fixture_path: Path, inter
             logger.warning("Fauxnance unavailable: symbol=%s error=%s", symbol, exc)
             if not ALLOW_API_FALLBACK:
                 raise
-
         except ExtractionError as exc:
             logger.error("API extraction failed: symbol=%s error=%s", symbol, exc)
             if not ALLOW_API_FALLBACK:
