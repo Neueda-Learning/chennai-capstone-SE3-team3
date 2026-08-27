@@ -1,5 +1,5 @@
 import pandas as pd
-from analytics.etl_pipeline.load import load, load_quarantine
+from analytics.src.load import load, load_quarantine
 
 def test_load_creates_csv(tmp_path):
     """Clean candle data should be written as csv"""

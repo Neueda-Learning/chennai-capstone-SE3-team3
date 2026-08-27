@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from pathlib import Path
 import argparse
-from analytics.etl_pipeline.extract import ExtractResult, extract
-from analytics.etl_pipeline.load import load, load_quarantine
-from analytics.etl_pipeline.transform import TransformResult, transform
+from analytics.src.extract import ExtractResult, extract
+from analytics.src.load import load, load_quarantine
+from analytics.src.transform import TransformResult, transform
 from analytics.config import DEFAULT_FIXTURE, DEFAULT_FROM_DATE, DEFAULT_TO_DATE, DEFAULT_INTERVAL, DEFAULT_SYMBOL
 
 @dataclass

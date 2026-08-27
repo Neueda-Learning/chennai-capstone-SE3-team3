@@ -1,5 +1,5 @@
 import json
-from analytics.etl_pipeline.transform import transform
+from analytics.src.transform import transform
 from analytics.config import MOCK_DATA_DIR
 
 def load_fixture(filename: str) -> dict:

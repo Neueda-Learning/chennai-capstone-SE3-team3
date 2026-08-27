@@ -2,7 +2,7 @@ import json
 import pandas as pd
 
 from analytics.config import DEFAULT_FROM_DATE, DEFAULT_TO_DATE, DEFAULT_INTERVAL, MOCK_DATA_DIR
-from analytics.etl_pipeline.extract import ExtractionError, extract
+from analytics.src.extract import ExtractionError, extract
 
 def test_fixture_extraction(tmp_path):
     """Fixture extraction should return the raw CandlesResponse payload"""
@@ -91,7 +91,7 @@ def test_api_failure_falls_back_to_fixture(monkeypatch, tmp_path):
     )
 
     monkeypatch.setattr(
-        "analytics.etl_pipeline.extract.api_is_configured",
+        "analytics.src.extract.api_is_configured",
         lambda: True,
     )
 
@@ -99,7 +99,7 @@ def test_api_failure_falls_back_to_fixture(monkeypatch, tmp_path):
         raise ExtractionError("API unavailable")
 
     monkeypatch.setattr(
-        "analytics.etl_pipeline.extract.fetch_from_api",
+        "analytics.src.extract.fetch_from_api",
         fake_fetch,
     )
 
