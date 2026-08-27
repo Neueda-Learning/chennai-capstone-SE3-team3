@@ -5,8 +5,8 @@ import duckdb
 import pandas as pd
 
 
-DEFAULT_DB_PATH = Path("data/analytics.duckdb")
-DEFAULT_SCHEMA_PATH = Path("contracts/analytics-schema.sql")
+DEFAULT_DB_PATH = Path("analytics/data/analytics.duckdb")
+DEFAULT_SCHEMA_PATH = Path("analytics/contracts/analytics-schema.sql")
 
 
 class AnalyticalStoreError(RuntimeError):
