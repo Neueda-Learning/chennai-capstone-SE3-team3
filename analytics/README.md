@@ -838,3 +838,45 @@ python -m analytics.etl_pipeline.etl_pipeline \
 - Calendar gaps are not artificially filled.
 - Invalid financial observations are never loaded into the clean dataset.
 - The same transformation rules apply to live API data, cached data and fixtures.
+
+
+## DuckDB Setup (One-Time)
+
+The analytics project uses DuckDB as its local analytical database. Each developer creates the database once on their machine.
+
+### 1. Install dependencies
+
+From the repository root:
+
+```powershell
+pip install -r analytics/requirements.txt
+```
+
+### 2. Create the analytical database
+
+Run:
+
+```powershell
+python -m analytics.duckdb_store
+```
+
+This creates a local database at:
+
+```
+data/analytics.duckdb
+```
+
+using the schema defined in:
+
+```
+contracts/analytics-schema.sql
+```
+
+The following tables are created:
+
+- `dim_account`
+- `dim_instrument`
+- `dim_date`
+- `fact_trades`
+
+> This is a **one-time setup**. Re-run it only if you delete the database or the schema changes.
