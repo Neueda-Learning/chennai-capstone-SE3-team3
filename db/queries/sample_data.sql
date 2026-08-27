@@ -368,7 +368,19 @@ VALUES
     
 (2011,
  'INFY.NS',
- 'Infosys LTD',
+ 'Infosys Ltd',
+ 'EQUITY',
+ 'TRADING'),
+    
+(2012,
+ 'RELIANCE.NS',
+ 'Reliance Industries Ltd',
+ 'EQUITY',
+ 'TRADING'),
+
+(2013,
+ 'TATASTEEL.BO',
+ 'Tata Steel Ltd',
  'EQUITY',
  'TRADING');
 
