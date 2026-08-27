@@ -7,13 +7,13 @@ from analytics.config import (DEFAULT_FROM_DATE, DEFAULT_TO_DATE, DEFAULT_INTERV
 MOCK_DATA_DIR = Path(__file__).resolve().parents[1] / "mock_data"
 
 def load_fixture(filename: str) -> dict:
-    """Load a fixture as a raw CandlesResponse payload."""
+    """Load a fixture as a raw CandlesResponse payload"""
 
     result = extract(symbol="TEST", from_date=DEFAULT_FROM_DATE, to_date=DEFAULT_TO_DATE, interval=DEFAULT_INTERVAL, fixture_path=MOCK_DATA_DIR / filename)
     return result.payload
 
 def test_reliance_fixture_has_expected_clean_rows():
-    """Valid RELIANCE candles should survive transformation."""
+    """Valid RELIANCE candles should survive transformation"""
 
     payload = load_fixture("candles-reliance-ns-2026-07.json")
     result = transform(payload)
@@ -22,7 +22,7 @@ def test_reliance_fixture_has_expected_clean_rows():
     assert len(result.clean) == 9
 
 def test_calendar_gap_is_not_filled():
-    """Missing trading days should remain missing."""
+    """Missing trading days should remain missing"""
 
     payload = load_fixture("candles-reliance-ns-2026-07.json")
     result = transform(payload)
@@ -32,7 +32,7 @@ def test_calendar_gap_is_not_filled():
     assert len(dates) == 9
 
 def test_infy_null_volume_is_allowed():
-    """Null volume is valid according to the upstream contract."""
+    """Null volume is valid according to the upstream contract"""
 
     payload = load_fixture("candles-infy-ns-2026-07.json")
     result = transform(payload)
@@ -41,7 +41,7 @@ def test_infy_null_volume_is_allowed():
     assert result.clean["volume"].isna().any()
 
 def test_infy_synthetic_flag_is_preserved():
-    """Synthetic candles should retain their provenance flag."""
+    """Synthetic candles should retain their provenance flag"""
 
     payload = load_fixture("candles-infy-ns-2026-07.json")
     result = transform(payload)
@@ -49,7 +49,7 @@ def test_infy_synthetic_flag_is_preserved():
     assert result.clean["synthetic"].eq(True).any()
 
 def test_malformed_fixture_quarantines_invalid_rows():
-    """Malformed candle records must never reach the clean output."""
+    """Malformed candle records must never reach the clean output"""
 
     payload = load_fixture("candles-malformed.json")
     result = transform(payload)
@@ -58,7 +58,7 @@ def test_malformed_fixture_quarantines_invalid_rows():
     assert result.quarantined["quarantine_reason"].notna().all()
 
 def test_no_invalid_ohlc_reaches_clean_output():
-    """Rows with invalid OHLC relationships must be rejected."""
+    """Rows with invalid OHLC relationships must be rejected"""
 
     payload = load_fixture("candles-malformed.json")
     result = transform(payload)
@@ -68,7 +68,7 @@ def test_no_invalid_ohlc_reaches_clean_output():
     ).any()
 
 def test_negative_volume_does_not_reach_clean_output():
-    """Negative volume must be quarantined."""
+    """Negative volume must be quarantined"""
 
     payload = load_fixture("candles-malformed.json")
     result = transform(payload)
@@ -78,7 +78,7 @@ def test_negative_volume_does_not_reach_clean_output():
     ).any()
 
 def test_duplicate_dates_do_not_reach_clean_output():
-    """All records involved in a duplicate date must be rejected."""
+    """All records involved in a duplicate date must be rejected"""
 
     payload = load_fixture("candles-malformed.json")
     result = transform(payload)

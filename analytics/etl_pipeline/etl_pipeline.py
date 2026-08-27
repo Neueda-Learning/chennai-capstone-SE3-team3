@@ -26,7 +26,7 @@ class PipelineResult:
 
 
 def run_pipeline(symbol: str, from_date: str, to_date: str, fixture_path: Path, interval: str = "1d") -> PipelineResult:
-    """Run extraction, transformation and loading for one symbol."""
+    """Run extraction, transformation and loading for one symbol"""
 
     extracted: ExtractResult = extract(symbol=symbol, from_date=from_date, to_date=to_date, fixture_path=fixture_path, interval=interval)
     transformed: TransformResult = transform(extracted.payload)

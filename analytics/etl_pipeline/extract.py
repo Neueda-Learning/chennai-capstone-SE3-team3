@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ExtractResult:
-    """Raw extracted response and its provenance."""
+    """Raw extracted response and its provenance"""
     payload: dict
     source: str
     symbol: str
@@ -18,23 +18,23 @@ class ExtractResult:
     interval: str
 
 class ExtractionError(RuntimeError):
-    """Raised when candle data cannot be extracted."""
+    """Raised when candle data cannot be extracted"""
 
 class RateLimitError(ExtractionError):
-    """Raised when the Fauxnance daily quota is exhausted."""
+    """Raised when the Fauxnance daily quota is exhausted"""
 
     def __init__(self, message: str, retry_after: int | None = None):
         super().__init__(message)
         self.retry_after = retry_after
 
 class SymbolRequestError(ExtractionError):
-    """Raised when a symbol request fails with a client error."""
+    """Raised when a symbol request fails with a client error"""
 
 class UpstreamUnavailableError(ExtractionError):
-    """Raised when Fauxnance cannot be reached."""
+    """Raised when Fauxnance cannot be reached"""
 
 def extract(symbol: str, from_date: str, to_date: str, fixture_path: Path, interval: str = "1d") -> ExtractResult:
-    """Obtain a raw candle response from cache, API, or fixture."""
+    """Obtain a raw candle response from cache, API, or fixture"""
 
     cached_payload = load_cached_response(symbol=symbol, from_date=from_date, to_date=to_date, interval=interval)
 
@@ -70,11 +70,11 @@ def extract(symbol: str, from_date: str, to_date: str, fixture_path: Path, inter
     return ExtractResult(payload=payload, source="fixture", symbol=symbol, from_date=from_date, to_date=to_date, interval=interval)
 
 def api_is_configured() -> bool:
-    """Return whether the Fauxnance URL and API key are configured."""
+    """Return whether the Fauxnance URL and API key are configured"""
     return bool(FAUXNANCE_BASE_URL and FAUXNANCE_API_KEY)
 
 def check_health() -> dict:
-    """Check Fauxnance service health without consuming a key quota unit."""
+    """Check Fauxnance service health without consuming a key quota unit"""
 
     url = f"{FAUXNANCE_BASE_URL}/health"
 
@@ -97,7 +97,7 @@ def check_health() -> dict:
 
 
 def check_usage() -> dict:
-    """Check the current API-key quota before requesting candles."""
+    """Check the current API-key quota before requesting candles"""
 
     url = f"{FAUXNANCE_BASE_URL}/usage"
     headers = {
@@ -128,7 +128,7 @@ def check_usage() -> dict:
     return payload
 
 def fetch_from_api(symbol: str, from_date: str, to_date: str, interval: str) -> dict:
-    """Fetch a raw CandlesResponse from Fauxnance."""
+    """Fetch a raw CandlesResponse from Fauxnance"""
 
     url = f"{FAUXNANCE_BASE_URL}{CANDLES_ENDPOINT.format(symbol=symbol)}"
     headers = {
@@ -182,7 +182,7 @@ def fetch_from_api(symbol: str, from_date: str, to_date: str, interval: str) -> 
     raise UpstreamUnavailableError(f"Fauxnance request failed for symbol={symbol}.")
 
 def load_fixture(fixture_path: Path) -> dict:
-    """Load an unchanged CandlesResponse payload from a fixture."""
+    """Load an unchanged CandlesResponse payload from a fixture"""
     if not fixture_path.exists():
         raise ExtractionError(f"Fixture does not exist: {fixture_path}")
     try:
@@ -192,7 +192,7 @@ def load_fixture(fixture_path: Path) -> dict:
         raise ExtractionError(f"Unable to load fixture: {fixture_path}") from exc
 
 def load_cached_response(symbol: str, from_date: str, to_date: str, interval: str) -> dict | None:
-    """Load a previously cached raw API response if available."""
+    """Load a previously cached raw API response if available"""
 
     cache_path = cache_path_for(symbol=symbol, from_date=from_date, to_date=to_date, interval=interval)
     if not cache_path.exists():
@@ -206,7 +206,7 @@ def load_cached_response(symbol: str, from_date: str, to_date: str, interval: st
         return None
 
 def save_cached_response(symbol: str, from_date: str, to_date: str, interval: str, payload: dict) -> Path:
-    """Save the raw API response to the extraction cache."""
+    """Save the raw API response to the extraction cache"""
 
     cache_path = cache_path_for(symbol=symbol, from_date=from_date, to_date=to_date, interval=interval,)
     cache_path.parent.mkdir(parents=True, exist_ok=True,)
@@ -217,14 +217,14 @@ def save_cached_response(symbol: str, from_date: str, to_date: str, interval: st
     return cache_path
 
 def cache_path_for(symbol: str, from_date: str, to_date: str, interval: str) -> Path:
-    """Return the deterministic cache path for a candle request."""
+    """Return the deterministic cache path for a candle request"""
 
     safe_symbol = symbol.replace("/", "_").replace("\\", "_").replace(":", "_")
     filename = f"{safe_symbol}_{from_date}_{to_date}_{interval}.json"
     return CACHE_DIR / filename
 
 def retry_after_seconds(response: requests.Response,) -> int | None:
-    """Read Retry-After from an API response."""
+    """Read Retry-After from an API response"""
     value = response.headers.get("Retry-After")
     if value is None:
         return None
@@ -234,7 +234,7 @@ def retry_after_seconds(response: requests.Response,) -> int | None:
         return None
 
 def backoff(attempt: int) -> None:
-    """Wait using exponential backoff."""
+    """Wait using exponential backoff"""
 
     delay = RETRY_BACKOFF_SECONDS * (2 ** attempt)
     time.sleep(delay)

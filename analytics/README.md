@@ -19,7 +19,7 @@
 - Caches successful raw API responses by symbol, date range and interval.
 - Returns raw `CandlesResponse` payloads from the extraction stage.
 - Converts raw candle records into a pandas DataFrame during transformation.
-- Preserves response-level metadata for provenance.
+- Preserves response-level metadata for future referee.
 - Validates and cleans candle data.
 - Separates malformed records into a quarantine dataset.
 - Saves clean candle data as CSV.

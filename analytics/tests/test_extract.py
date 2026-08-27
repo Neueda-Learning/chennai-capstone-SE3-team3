@@ -14,7 +14,7 @@ from analytics.etl_pipeline.extract import (
 
 
 def test_fixture_extraction(tmp_path):
-    """Fixture extraction should return the raw CandlesResponse payload."""
+    """Fixture extraction should return the raw CandlesResponse payload"""
 
     fixture = tmp_path / "candles.json"
 
@@ -66,7 +66,7 @@ def test_fixture_extraction(tmp_path):
 
 
 def test_api_failure_falls_back_to_fixture(monkeypatch, tmp_path):
-    """API failures should fall back to the fixture."""
+    """API failures should fall back to the fixture"""
 
     fixture = tmp_path / "candles.json"
 
@@ -125,7 +125,7 @@ def test_api_failure_falls_back_to_fixture(monkeypatch, tmp_path):
 
 
 def test_fixture_metadata_is_preserved():
-    """Fixture envelope metadata should remain in the raw payload."""
+    """Fixture envelope metadata should remain in the raw payload"""
 
     result = extract(
         symbol="RELIANCE.NS",

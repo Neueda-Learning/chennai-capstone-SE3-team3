@@ -4,7 +4,7 @@ from analytics.config import FINAL_COLUMN_ORDER, NUMERIC_COLUMNS, REQUIRED_COLUM
 
 @dataclass
 class TransformResult:
-    """Clean and quarantined candle data with response metadata."""
+    """Clean and quarantined candle data with response metadata"""
     clean: pd.DataFrame
     quarantined: pd.DataFrame
     symbol: str
@@ -19,7 +19,7 @@ class TransformationError(ValueError):
     """Raised when transformation cannot be performed"""
 
 def transform(payload: dict) -> TransformResult:
-    """Validate and transform a raw CandlesResponse."""
+    """Validate and transform a raw CandlesResponse"""
     
     if not isinstance(payload, dict):
         raise TransformationError("CandlesResponse must be a JSON object.")
