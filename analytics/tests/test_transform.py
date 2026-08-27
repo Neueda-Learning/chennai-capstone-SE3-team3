@@ -1,16 +1,14 @@
-from pathlib import Path
-
-from analytics.etl_pipeline.extract import extract
+import json
 from analytics.etl_pipeline.transform import transform
-from analytics.config import (DEFAULT_FROM_DATE, DEFAULT_TO_DATE, DEFAULT_INTERVAL)
-
-MOCK_DATA_DIR = Path(__file__).resolve().parents[1] / "mock_data"
+from analytics.config import MOCK_DATA_DIR
 
 def load_fixture(filename: str) -> dict:
-    """Load a fixture as a raw CandlesResponse payload"""
+    """Load a fixture directly as a raw CandlesResponse payload."""
 
-    result = extract(symbol="TEST", from_date=DEFAULT_FROM_DATE, to_date=DEFAULT_TO_DATE, interval=DEFAULT_INTERVAL, fixture_path=MOCK_DATA_DIR / filename)
-    return result.payload
+    fixture_path = MOCK_DATA_DIR / filename
+
+    with fixture_path.open("r", encoding="utf-8") as file:
+        return json.load(file)
 
 def test_reliance_fixture_has_expected_clean_rows():
     """Valid RELIANCE candles should survive transformation"""

@@ -1,17 +1,8 @@
 import json
 import pandas as pd
 
-from analytics.config import (
-    DEFAULT_FROM_DATE,
-    DEFAULT_TO_DATE,
-    DEFAULT_INTERVAL,
-    MOCK_DATA_DIR,
-)
-from analytics.etl_pipeline.extract import (
-    ExtractionError,
-    extract,
-)
-
+from analytics.config import DEFAULT_FROM_DATE, DEFAULT_TO_DATE, DEFAULT_INTERVAL, MOCK_DATA_DIR
+from analytics.etl_pipeline.extract import ExtractionError, extract
 
 def test_fixture_extraction(tmp_path):
     """Fixture extraction should return the raw CandlesResponse payload"""
