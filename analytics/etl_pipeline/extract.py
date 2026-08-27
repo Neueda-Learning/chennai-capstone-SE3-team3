@@ -130,7 +130,7 @@ def check_usage() -> dict:
 def fetch_from_api(symbol: str, from_date: str, to_date: str, interval: str) -> dict:
     """Fetch a raw CandlesResponse from Fauxnance."""
 
-    url = f"{FAUXNANCE_BASE_URL} {CANDLES_ENDPOINT.format(symbol=symbol)}"
+    url = f"{FAUXNANCE_BASE_URL}{CANDLES_ENDPOINT.format(symbol=symbol)}"
     headers = {
         "X-Api-Key": FAUXNANCE_API_KEY,
         "Accept": "application/json",
