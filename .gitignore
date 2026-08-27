@@ -51,6 +51,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Analytics Cache and Dumps
+# Analytics DB, Cache and Dumps
 analytics/cache/
 analytics/output/
