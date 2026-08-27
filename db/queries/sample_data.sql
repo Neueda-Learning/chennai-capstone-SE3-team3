@@ -304,7 +304,7 @@ VALUES
 
 
 -- ============================================================
--- 4. INSTRUMENT - 13 rows
+-- 4. INSTRUMENT - 10 rows
 -- ============================================================
 -- Includes TRADING, HALTED and RETIRED.
 -- ============================================================
@@ -329,12 +329,6 @@ VALUES
  'Microsoft Corporation',
  'EQUITY',
  'TRADING'),
-
-(2003,
- 'VOD',
- 'Vodafone Group Plc',
- 'EQUITY',
- 'HALTED'),
 
 (2004,
  'GOOGL',
@@ -370,35 +364,13 @@ VALUES
  'SPY',
  'SPDR S&P 500 ETF Trust',
  'ETF',
- 'TRADING'),
+ 'TRADING')
 
-(2010,
- 'OLD1',
- 'Retired Investment Fund',
- 'FUND',
- 'RETIRED'),
-    
-(
-    2011,
-    'INFY.NS',
-    'Infosys Ltd',
-    'EQUITY',
-    'TRADING'
-),
-(
-    2012,
-    'RELIANCE.NS',
-    'Reliance Industries Ltd',
-    'EQUITY',
-    'TRADING'
-),
-(
-    2013,
-    'TATASTEEL.BO',
-    'Tata Steel Ltd',
-    'EQUITY',
-    'TRADING'
-);
+(2011,
+ 'INFY.NS',
+ 'Infosys LTD',
+ 'EQUITY',
+ 'TRADING');
 
 
 -- ============================================================
@@ -469,19 +441,6 @@ VALUES
 ),
 
 (
-    3004,
-    'IDEMP-20260823-0004',
-    'REJECTED',
-    '2026-08-20 14:20:00+01',
-    'SELL',
-    8.5000,
-    100,
-    '2026-08-20 14:20:01+01',
-    1002,
-    2003
-),
-
-(
     3005,
     'IDEMP-20260823-0005',
     'RECEIVED',
@@ -544,19 +503,6 @@ VALUES
     '2026-08-19 14:00:45+01',
     1010,
     2009
-),
-
-(
-    3010,
-    'IDEMP-20260823-0010',
-    'REJECTED',
-    '2026-08-18 15:25:00+01',
-    'SELL',
-    75.0000,
-    50,
-    '2026-08-18 15:26:00+01',
-    1008,
-    2010
 );
 
 
@@ -643,15 +589,6 @@ VALUES
     120.0000,
     1007,
     2008
-),
-
-(
-    4010,
-    100,
-    50.0000,
-    1010,
-    2010
 );
-
 
 COMMIT;
