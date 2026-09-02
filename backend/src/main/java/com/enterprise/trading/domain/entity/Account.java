@@ -62,11 +62,53 @@ public class Account {
             OffsetDateTime closedAt,
             int clientId) {
 
+        if(accountId < 1) {
+            throw new IllegalArgumentException(
+                    "Account ID must be at least 1");
+        }
+
+        if(accountNumber == null || accountNumber.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Account number is required");
+        }
+
+        if(accountNumber.length() > 30) {
+            throw new IllegalArgumentException(
+                    "Account number cannot exceed 30 characters");
+        }
+
+        Objects.requireNonNull(
+                openingDate,
+                "Opening date is required");
+
+        validateMoney(balance, "Balance");
+        validateMoney(purchasingPower, "Purchasing power");
+
+        Objects.requireNonNull(
+                accountStatus,
+                "Account status is required");
+
+        if(currency == null || !currency.matches("[A-Z]{3}")) {
+            throw new IllegalArgumentException(
+                    "Currency must be a three-letter uppercase code");
+        }
+
+        if(version < 1) {
+            throw new IllegalArgumentException(
+                    "Version must be at least 1");
+        }
+
+        if (clientId < 1) {
+            throw new IllegalArgumentException(
+                    "Client ID must be at least 1");
+        }
+
+
         this.accountId = accountId;
         this.accountNumber = accountNumber;
         this.openingDate = openingDate;
-        this.balance = balance;
-        this.purchasingPower = purchasingPower;
+        this.balance = normaliseMoney(balance);
+        this.purchasingPower = normaliseMoney(purchasingPower);
         this.accountStatus = accountStatus;
         this.currency = currency;
         this.version = version;
@@ -154,6 +196,34 @@ public class Account {
         accountStatus = AccountStatus.CLOSED;
         closedAt = OffsetDateTime.now();
     }
+
+    private static BigDecimal normaliseMoney(
+            BigDecimal value) {
+
+        return value.setScale(2);
+    }
+
+    private static void validateMoney(
+            BigDecimal value,
+            String fieldName) {
+
+        Objects.requireNonNull(
+                value,
+                fieldName + " is required");
+
+        if(value.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException(
+                    fieldName + " cannot be negative");
+        }
+
+        if(value.scale() > 4) {
+            throw new IllegalArgumentException(
+                    fieldName
+                            + " cannot have more than four decimal places");
+        }
+    }
+
+
 
     public int getAccountId() {
         return accountId;

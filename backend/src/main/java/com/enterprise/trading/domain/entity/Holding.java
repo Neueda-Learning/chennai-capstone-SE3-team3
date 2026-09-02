@@ -8,6 +8,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Objects;
 
 public class Holding {
 
@@ -35,25 +36,43 @@ public class Holding {
             int accountId,
             int instrumentId) {
 
-        this.holdingId = holdingId;
-        this.quantity = quantity;
-
-        if (purchasePrice == null) {
-            throw new IllegalArgumentException("Purchase price cannot be null");
+        if (holdingId < 1) {
+            throw new IllegalArgumentException(
+                    "Holding ID must be at least 1");
         }
+
+        if (quantity < 0) {
+            throw new IllegalArgumentException(
+                    "Position quantity cannot be negative");
+        }
+
+        Objects.requireNonNull(
+                purchasePrice,
+                "Purchase price is required");
 
         if (purchasePrice.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Purchase price cannot be negative");
-        }
-
-        if (purchasePrice.scale() > 2) {
             throw new IllegalArgumentException(
-                    "Purchase price must have at most 2 decimal places"
-            );
+                    "Purchase price cannot be negative");
         }
 
-        this.purchasePrice = purchasePrice.setScale(2, RoundingMode.HALF_UP);
+        if (purchasePrice.scale() > 4) {
+            throw new IllegalArgumentException(
+                    "Purchase price cannot have more than four decimal places");
+        }
 
+        if (accountId < 1) {
+            throw new IllegalArgumentException(
+                    "Account ID must be at least 1");
+        }
+
+        if (instrumentId < 1) {
+            throw new IllegalArgumentException(
+                    "Instrument ID must be at least 1");
+        }
+
+        this.holdingId = holdingId;
+        this.quantity = quantity;
+        this.purchasePrice = purchasePrice.setScale(4);
         this.accountId = accountId;
         this.instrumentId = instrumentId;
     }
