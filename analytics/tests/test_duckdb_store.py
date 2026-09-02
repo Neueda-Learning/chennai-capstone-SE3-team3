@@ -7,9 +7,11 @@ from analytics.duckdb_store import (
     load_dim_date,
     load_dim_instrument,
 )
+from analytics.config import ANALYTICS_ROOT
 
 
-SCHEMA_PATH = "contracts/analytics-schema.sql"
+# Absolute so the test passes regardless of the process cwd it is run from.
+SCHEMA_PATH = ANALYTICS_ROOT / "contracts" / "analytics-schema.sql"
 
 
 def test_create_analytical_store_creates_required_tables(tmp_path):

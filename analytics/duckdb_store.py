@@ -4,9 +4,11 @@ from datetime import datetime, timezone
 import duckdb
 import pandas as pd
 
+from analytics.config import ANALYTICS_ROOT
 
-DEFAULT_DB_PATH = Path("analytics/data/analytics.duckdb")
-DEFAULT_SCHEMA_PATH = Path("analytics/contracts/analytics-schema.sql")
+# Absolute so callers get the same defaults regardless of process cwd.
+DEFAULT_DB_PATH = ANALYTICS_ROOT / "data" / "analytics.duckdb"
+DEFAULT_SCHEMA_PATH = ANALYTICS_ROOT / "contracts" / "analytics-schema.sql"
 
 
 class AnalyticalStoreError(RuntimeError):
