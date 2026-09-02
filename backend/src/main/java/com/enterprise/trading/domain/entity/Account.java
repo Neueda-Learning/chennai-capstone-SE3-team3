@@ -1,6 +1,12 @@
+
 package com.enterprise.trading.domain.entity;
 
 import com.enterprise.trading.domain.enums.AccountStatus;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -9,21 +15,38 @@ import java.util.Objects;
 
 public class Account {
 
+    @Positive
     private final int accountId;
+
+    @NotBlank
+    @Size(max = 30)
     private final String accountNumber;
+
+    @NotNull
     private final LocalDate openingDate;
 
+    @NotNull
+    @DecimalMin(value = "0.00")
     private BigDecimal balance;
+
+    @NotNull
+    @DecimalMin(value = "0.00")
     private BigDecimal purchasingPower;
 
+    @NotNull
     private AccountStatus accountStatus;
+
+    @NotBlank
+    @Size(min = 3, max = 3)
     private final String currency;
 
+    @Positive
     private final long version;
 
     private OffsetDateTime suspendedAt;
     private OffsetDateTime closedAt;
 
+    @Positive
     private final int clientId;
 
     public Account(
@@ -50,6 +73,86 @@ public class Account {
         this.suspendedAt = suspendedAt;
         this.closedAt = closedAt;
         this.clientId = clientId;
+    }
+
+    public void credit(BigDecimal amount) {
+
+        if (amount == null) {
+            throw new IllegalArgumentException("Credit amount cannot be null");
+        }
+
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Credit amount must be positive");
+        }
+
+        balance = balance.add(amount);
+    }
+
+    public void debit(BigDecimal amount) {
+
+        if (amount == null) {
+            throw new IllegalArgumentException("Debit amount cannot be null");
+        }
+
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Debit amount must be positive");
+        }
+
+        if (!canAfford(amount)) {
+            throw new IllegalArgumentException("Insufficient balance");
+        }
+
+        balance = balance.subtract(amount);
+    }
+
+    public boolean canAfford(BigDecimal amount) {
+
+        if (amount == null) {
+            return false;
+        }
+
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            return false;
+        }
+
+        return balance.compareTo(amount) >= 0;
+    }
+
+    public void suspend() {
+
+        if (accountStatus != AccountStatus.ACTIVE) {
+            throw new IllegalStateException(
+                    "Only an active account can be suspended"
+            );
+        }
+
+        accountStatus = AccountStatus.SUSPENDED;
+        suspendedAt = OffsetDateTime.now();
+    }
+
+    public void activate() {
+
+        if (accountStatus != AccountStatus.SUSPENDED) {
+            throw new IllegalStateException(
+                    "Only a suspended account can be activated"
+            );
+        }
+
+        accountStatus = AccountStatus.ACTIVE;
+        suspendedAt = null;
+    }
+
+    public void close() {
+
+        if (accountStatus != AccountStatus.ACTIVE
+                && accountStatus != AccountStatus.SUSPENDED) {
+            throw new IllegalStateException(
+                    "Account is already closed"
+            );
+        }
+
+        accountStatus = AccountStatus.CLOSED;
+        closedAt = OffsetDateTime.now();
     }
 
     public int getAccountId() {
@@ -95,6 +198,5 @@ public class Account {
     public int getClientId() {
         return clientId;
     }
-
-
 }
+

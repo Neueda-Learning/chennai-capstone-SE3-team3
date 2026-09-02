@@ -94,13 +94,17 @@ class AccountTest {
                 10
         );
 
-        assertThrows(IllegalArgumentException.class, () -> account.debit(new BigDecimal("1001.00")));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> account.debit(new BigDecimal("1001.00"))
+        );
+
         assertEquals(new BigDecimal("1000.00"), account.getBalance());
     }
 
     @Test
-    @DisplayName("can affort an amount less than or equal to the balance")
-    void canAffortAnAmountLessThanOrEqualToTheBalance() {
+    @DisplayName("can afford an amount less than or equal to the balance")
+    void canAffordAnAmountLessThanOrEqualToTheBalance() {
         Account account = new Account(
                 1,
                 "ETP000000001",
@@ -119,8 +123,8 @@ class AccountTest {
     }
 
     @Test
-    @DisplayName("cannot affort an amount greater than the balance")
-    void cannotAffortAnAmountGreaterThanTheBalance() {
+    @DisplayName("cannot afford an amount greater than the balance")
+    void cannotAffordAnAmountGreaterThanTheBalance() {
         Account account = new Account(
                 1,
                 "ETP000000001",
@@ -155,7 +159,7 @@ class AccountTest {
                 10
         );
 
-        for (int i=0; i<1000; i++) {
+        for (int i = 0; i < 1000; i++) {
             account.credit(new BigDecimal("0.10"));
             account.debit(new BigDecimal("0.10"));
         }
@@ -202,7 +206,10 @@ class AccountTest {
                 10
         );
 
-        assertThrows(IllegalArgumentException.class, () -> account.credit(null));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> account.credit(null)
+        );
     }
 
     @Test
@@ -222,7 +229,10 @@ class AccountTest {
                 10
         );
 
-        assertThrows(IllegalArgumentException.class, () -> account.credit(BigDecimal.ZERO));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> account.credit(BigDecimal.ZERO)
+        );
     }
 
     @Test
@@ -242,11 +252,14 @@ class AccountTest {
                 10
         );
 
-        assertThrows(IllegalArgumentException.class, () -> account.debit(null));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> account.debit(null)
+        );
     }
 
     @Test
-    @DisplayName("rejects a non-positive credit amount")
+    @DisplayName("rejects a non-positive debit amount")
     void rejectsNonPositiveDebitAmount() {
         Account account = new Account(
                 1,
@@ -262,7 +275,10 @@ class AccountTest {
                 10
         );
 
-        assertThrows(IllegalArgumentException.class, () -> account.debit(BigDecimal.ZERO));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> account.debit(BigDecimal.ZERO)
+        );
     }
 
     @Test
@@ -282,7 +298,7 @@ class AccountTest {
                 10
         );
 
-        assertEquals(AccountStatus.ACTIVE, Account.getAccountStatus());
+        assertEquals(AccountStatus.ACTIVE, account.getAccountStatus());
     }
 
     @Test
@@ -316,7 +332,7 @@ class AccountTest {
                 LocalDate.of(2026, 9, 2),
                 new BigDecimal("1000.00"),
                 new BigDecimal("1000.00"),
-                AccountStatus.ACTIVE,
+                AccountStatus.SUSPENDED,
                 "INR",
                 1L,
                 null,
@@ -360,7 +376,7 @@ class AccountTest {
                 LocalDate.of(2026, 9, 2),
                 new BigDecimal("1000.00"),
                 new BigDecimal("1000.00"),
-                AccountStatus.ACTIVE,
+                AccountStatus.CLOSED,
                 "INR",
                 1L,
                 null,
@@ -368,7 +384,10 @@ class AccountTest {
                 10
         );
 
-        assertThrows(IllegalStateException.class, account::activate);
+        assertThrows(
+                IllegalStateException.class,
+                account::activate
+        );
     }
-
 }
+
