@@ -1,28 +1,49 @@
-package com.enterprise.trading.domain.entity;
+ package com.enterprise.trading.domain.entity;
 
 import com.enterprise.trading.domain.enums.OrderSide;
 import com.enterprise.trading.domain.enums.OrderStatus;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.Objects;
 
 public class Order {
 
+    @Positive
     private final long orderId;
+
+    @NotBlank
+    @Size(max = 100)
     private final String idempotencyKey;
 
+    @NotNull
     private OrderStatus orderStatus;
 
+    @NotNull
     private final OffsetDateTime receivedAt;
 
+    @NotNull
     private final OrderSide orderSide;
+
+    @NotNull
+    @DecimalMin(value = "0.00", inclusive = false)
+    @Digits(integer = 17, fraction = 2)
     private final BigDecimal price;
+
+    @Positive
     private final long quantity;
 
     private OffsetDateTime transactionDate;
 
+    @Positive
     private final int accountId;
+
+    @Positive
     private final int instrumentId;
 
     public Order(
@@ -54,30 +75,34 @@ public class Order {
                     "Idempotency key cannot exceed 100 characters");
         }
 
-        Objects.requireNonNull(
-                orderStatus,
-                "Order status is required");
+        if (orderStatus == null) {
+            throw new IllegalArgumentException(
+                    "Order status is required");
+        }
 
-        Objects.requireNonNull(
-                receivedAt,
-                "Received timestamp is required");
+        if (receivedAt == null) {
+            throw new IllegalArgumentException(
+                    "Received timestamp is required");
+        }
 
-        Objects.requireNonNull(
-                orderSide,
-                "Order side is required");
+        if (orderSide == null) {
+            throw new IllegalArgumentException(
+                    "Order side is required");
+        }
 
-        Objects.requireNonNull(
-                price,
-                "Price is required");
+        if (price == null) {
+            throw new IllegalArgumentException(
+                    "Price is required");
+        }
 
         if (price.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException(
                     "Price must be greater than zero");
         }
 
-        if (price.scale() > 4) {
+        if (price.scale() > 2) {
             throw new IllegalArgumentException(
-                    "Price cannot have more than four decimal places");
+                    "Price cannot have more than two decimal places");
         }
 
         if (quantity <= 0) {
@@ -95,41 +120,57 @@ public class Order {
                     "Instrument ID must be at least 1");
         }
 
-        validateTransactionDate(
-                orderStatus,
-                transactionDate);
-
         this.orderId = orderId;
         this.idempotencyKey = idempotencyKey;
         this.orderStatus = orderStatus;
         this.receivedAt = receivedAt;
         this.orderSide = orderSide;
-        this.price = price.setScale(4);
+        this.price = price.setScale(2);
         this.quantity = quantity;
         this.transactionDate = transactionDate;
         this.accountId = accountId;
         this.instrumentId = instrumentId;
     }
 
-    private void validateTransactionDate(
-            OrderStatus status,
-            OffsetDateTime transactionDate) {
+    public void fill() {
 
-        boolean terminal =
-                status == OrderStatus.FILLED
-                        || status == OrderStatus.REJECTED
-                        || status == OrderStatus.CANCELLED;
-
-        if (status == OrderStatus.RECEIVED
-                && transactionDate != null) {
-
-            throw new IllegalArgumentException(
-                    "RECEIVED order cannot have a transaction date");
+        if (orderStatus != OrderStatus.RECEIVED) {
+            throw new IllegalStateException(
+                    "Only a received order can be filled");
         }
 
-        if (terminal && transactionDate == null) {
-            throw new IllegalArgumentException(
-                    "Terminal order must have a transaction date");
+        orderStatus = OrderStatus.FILLED;
+
+        if (transactionDate == null) {
+            transactionDate = OffsetDateTime.now();
+        }
+    }
+
+    public void reject() {
+
+        if (orderStatus != OrderStatus.RECEIVED) {
+            throw new IllegalStateException(
+                    "Only a received order can be rejected");
+        }
+
+        orderStatus = OrderStatus.REJECTED;
+
+        if (transactionDate == null) {
+            transactionDate = OffsetDateTime.now();
+        }
+    }
+
+    public void cancel() {
+
+        if (orderStatus != OrderStatus.RECEIVED) {
+            throw new IllegalStateException(
+                    "Only a received order can be cancelled");
+        }
+
+        orderStatus = OrderStatus.CANCELLED;
+
+        if (transactionDate == null) {
+            transactionDate = OffsetDateTime.now();
         }
     }
 
@@ -172,5 +213,4 @@ public class Order {
     public int getInstrumentId() {
         return instrumentId;
     }
-
 }
