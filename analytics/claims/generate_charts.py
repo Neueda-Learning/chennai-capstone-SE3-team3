@@ -10,23 +10,60 @@ from plotly.offline import plot
 # ============================================================
 
 INPUT_FILE = Path(
-    "analytics/output/candles/RELIANCE.NS.csv"
+    "analytics/output/candles/AAPL.csv"
 )
 
 OUTPUT_DIR = Path("analytics/claims/charts")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-REPORT_FILE = OUTPUT_DIR / "report.html"
-FINDINGS_FILE = OUTPUT_DIR / "candidate_findings.csv"
+# Extract ticker from the input filename.
+# AAPL.csv -> AAPL
+# RELIANCE.NS.csv -> RELIANCE.NS
+TICKER = INPUT_FILE.stem
 
-COMPANY_NAME = "Reliance Industries"
+# Full company names used in chart titles.
+COMPANY_NAMES = {
+    "AAPL": "Apple Inc.",
+    "RELIANCE.NS": "Reliance Industries",
+    "INFY.NS": "Infosys Ltd",
+    "TATASTEEL.BO": "Tata Steel Ltd",
+    "MSFT": "Microsoft Corporation",
+    "GOOGL": "Alphabet Inc.",
+    "AMZN": "Amazon.com Inc.",
+    "TSLA": "Tesla Inc.",
+    "META": "Meta Platforms Inc.",
+}
+
+COMPANY_NAME = COMPANY_NAMES.get(TICKER, TICKER)
+
+REPORT_FILE = OUTPUT_DIR / f"report_{TICKER}.html"
+FINDINGS_FILE = OUTPUT_DIR / f"candidate_findings_{TICKER}.csv"
+
+IMAGE_DIR = OUTPUT_DIR / f"images_{TICKER}"
+IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ============================================================
 # 1. LOAD TRANSFORMED CSV
 # ============================================================
 
+print("=" * 70)
+print("LOADING DATA")
+print("=" * 70)
+
+print(f"Input file: {INPUT_FILE}")
+
+if not INPUT_FILE.exists():
+    raise FileNotFoundError(
+        f"Input file does not exist: {INPUT_FILE}"
+    )
+
 df = pd.read_csv(INPUT_FILE)
+
+
+# ============================================================
+# 2. CHECK REQUIRED COLUMNS
+# ============================================================
 
 required_columns = {
     "date",
@@ -46,6 +83,10 @@ if missing:
         f"Missing required columns: {sorted(missing)}"
     )
 
+
+# ============================================================
+# 3. CLEAN DATA TYPES
+# ============================================================
 
 df["date"] = pd.to_datetime(
     df["date"],
@@ -75,13 +116,16 @@ df = (
 
 
 # ============================================================
-# 2. DATA QUALITY CHECKS
+# 4. DATA QUALITY CHECKS
 # ============================================================
 
+print()
 print("=" * 70)
 print("DATA QUALITY CHECKS")
 print("=" * 70)
 
+print(f"Company: {COMPANY_NAME}")
+print(f"Ticker: {TICKER}")
 print(f"Rows: {len(df)}")
 
 print(
@@ -91,17 +135,15 @@ print(
     f"{df['date'].max().date()}"
 )
 
-print("\nMissing values:")
+print()
+print("Missing values:")
 print(df.isna().sum())
 
 duplicate_dates = df[
     df["date"].duplicated(keep=False)
 ]
 
-print(
-    f"\nDuplicate dates: "
-    f"{len(duplicate_dates)}"
-)
+print(f"\nDuplicate dates: {len(duplicate_dates)}")
 
 invalid_ohlc = df[
     (df["high"] < df["open"])
@@ -110,10 +152,7 @@ invalid_ohlc = df[
     | (df["low"] > df["close"])
 ]
 
-print(
-    f"Invalid OHLC rows: "
-    f"{len(invalid_ohlc)}"
-)
+print(f"Invalid OHLC rows: {len(invalid_ohlc)}")
 
 synthetic_count = (
     df["synthetic"]
@@ -121,46 +160,46 @@ synthetic_count = (
     .sum()
 )
 
+print(f"Synthetic rows: {synthetic_count}")
+
+missing_volume_count = df["volume"].isna().sum()
+
 print(
-    f"Synthetic rows: "
-    f"{synthetic_count}"
+    f"Rows with missing volume: "
+    f"{missing_volume_count}"
 )
 
 
 # ============================================================
-# 3. CREATE DERIVED METRICS
+# 5. CREATE DERIVED METRICS
 # ============================================================
 
-# Percentage change from opening price to closing price.
+# Open-to-close percentage movement.
 df["daily_change_pct"] = (
     (df["close"] - df["open"])
     / df["open"]
     * 100
 )
 
-# Absolute movement regardless of direction.
+# Absolute size of the open-to-close movement.
 df["absolute_daily_change_pct"] = (
     df["daily_change_pct"].abs()
 )
 
-# Difference between high and low as a percentage
-# of the opening price.
+# High-to-low intraday range as a percentage of opening price.
 df["intraday_range_pct"] = (
     (df["high"] - df["low"])
     / df["open"]
     * 100
 )
 
-# Price change relative to the first closing price.
+# Closing price change relative to the first closing price.
+first_close = df["close"].iloc[0]
+
 df["cumulative_return_pct"] = (
-    (
-        df["close"]
-        / df["close"].iloc[0]
-    )
-    - 1
+    (df["close"] / first_close) - 1
 ) * 100
 
-# Month for any future grouping/analysis.
 df["month"] = (
     df["date"]
     .dt.to_period("M")
@@ -169,29 +208,32 @@ df["month"] = (
 
 
 # ============================================================
-# 4. VALID VOLUME DATA
+# 6. DATA USED FOR VOLUME ANALYSIS
 # ============================================================
 
-# Synthetic observations and observations without volume
-# are excluded from volume-based analysis.
-
+# Volume-based analysis excludes:
+# - missing volume
+# - synthetic observations
 volume_df = df[
     df["volume"].notna()
     & (~df["synthetic"].fillna(False))
 ].copy()
 
+print()
+print(
+    f"Valid volume rows: "
+    f"{len(volume_df)}"
+)
+
 
 # ============================================================
-# 5. CANDIDATE FINDINGS
+# 7. CANDIDATE FINDINGS
 # ============================================================
 
 findings = []
 
 
-# ------------------------------------------------------------
-# Finding 1: Largest daily gain
-# ------------------------------------------------------------
-
+# Largest daily gain.
 best_day = df.loc[
     df["daily_change_pct"].idxmax()
 ]
@@ -204,10 +246,7 @@ findings.append({
 })
 
 
-# ------------------------------------------------------------
-# Finding 2: Largest daily decline
-# ------------------------------------------------------------
-
+# Largest daily decline.
 worst_day = df.loc[
     df["daily_change_pct"].idxmin()
 ]
@@ -220,10 +259,7 @@ findings.append({
 })
 
 
-# ------------------------------------------------------------
-# Finding 3: Largest intraday range
-# ------------------------------------------------------------
-
+# Largest intraday range.
 largest_range_day = df.loc[
     df["intraday_range_pct"].idxmax()
 ]
@@ -236,10 +272,7 @@ findings.append({
 })
 
 
-# ------------------------------------------------------------
-# Finding 4: Smallest intraday range
-# ------------------------------------------------------------
-
+# Smallest intraday range.
 smallest_range_day = df.loc[
     df["intraday_range_pct"].idxmin()
 ]
@@ -252,9 +285,8 @@ findings.append({
 })
 
 
-# ------------------------------------------------------------
-# Finding 5: Highest volume day
-# ------------------------------------------------------------
+# Highest-volume day.
+top_volume = pd.DataFrame()
 
 if not volume_df.empty:
 
@@ -270,27 +302,18 @@ if not volume_df.empty:
     })
 
 
-# ------------------------------------------------------------
-# Finding 6: Volume concentration
-# ------------------------------------------------------------
-
+# Top 10 volume concentration.
 if not volume_df.empty:
 
-    top_n = min(
-        10,
-        len(volume_df)
-    )
+    top_n = min(10, len(volume_df))
 
-    top_volume = volume_df.nlargest(
-        top_n,
-        "volume"
+    top_volume = (
+        volume_df
+        .nlargest(top_n, "volume")
     )
 
     total_volume = volume_df["volume"].sum()
-
-    top_volume_total = top_volume[
-        "volume"
-    ].sum()
+    top_volume_total = top_volume["volume"].sum()
 
     top_volume_share = (
         top_volume_total
@@ -305,198 +328,158 @@ if not volume_df.empty:
     )
 
     findings.append({
-        "candidate":
-            f"Top {top_n} days volume share",
-        "date":
-            "",
-        "value":
-            top_volume_share,
-        "unit":
-            "%"
+        "candidate": f"Top {top_n} days volume share",
+        "date": "",
+        "value": top_volume_share,
+        "unit": "%"
     })
 
     findings.append({
-        "candidate":
-            f"Top {top_n} days share of valid-volume days",
-        "date":
-            "",
-        "value":
-            top_days_share,
-        "unit":
-            "%"
+        "candidate": f"Top {top_n} days share of valid-volume days",
+        "date": "",
+        "value": top_days_share,
+        "unit": "%"
     })
 
 
-# ------------------------------------------------------------
-# Finding 7: High volume vs price movement
-# ------------------------------------------------------------
-
-if len(volume_df) >= 2:
+# High-volume days versus remaining days.
+if not volume_df.empty and not top_volume.empty:
 
     top_volume_average_move = (
-        top_volume[
-            "absolute_daily_change_pct"
-        ].mean()
+        top_volume["absolute_daily_change_pct"].mean()
     )
 
-    remaining = volume_df.drop(
-        top_volume.index
-    )
+    remaining = volume_df.drop(top_volume.index)
 
     if not remaining.empty:
 
         remaining_average_move = (
-            remaining[
-                "absolute_daily_change_pct"
-            ].mean()
+            remaining["absolute_daily_change_pct"].mean()
         )
 
         findings.append({
-            "candidate":
-                "Top-volume average absolute movement",
-            "date":
-                "",
-            "value":
-                top_volume_average_move,
-            "unit":
-                "%"
+            "candidate": "Top-volume average absolute movement",
+            "date": "",
+            "value": top_volume_average_move,
+            "unit": "%"
         })
 
         findings.append({
-            "candidate":
-                "Remaining-days average absolute movement",
-            "date":
-                "",
-            "value":
-                remaining_average_move,
-            "unit":
-                "%"
+            "candidate": "Remaining-days average absolute movement",
+            "date": "",
+            "value": remaining_average_move,
+            "unit": "%"
         })
 
         if remaining_average_move != 0:
 
+            movement_ratio = (
+                top_volume_average_move
+                / remaining_average_move
+            )
+
+            movement_difference_pct = (
+                (
+                    top_volume_average_move
+                    / remaining_average_move
+                )
+                - 1
+            ) * 100
+
             findings.append({
-                "candidate":
-                    "High-volume movement ratio",
-                "date":
-                    "",
-                "value":
-                    (
-                        top_volume_average_move
-                        / remaining_average_move
-                    ),
-                "unit":
-                    "x"
+                "candidate": "High-volume movement ratio",
+                "date": "",
+                "value": movement_ratio,
+                "unit": "x"
+            })
+
+            findings.append({
+                "candidate": "High-volume movement difference",
+                "date": "",
+                "value": movement_difference_pct,
+                "unit": "%"
             })
 
 
-# ------------------------------------------------------------
-# Finding 8: Volume / price movement correlation
-# ------------------------------------------------------------
-
+# Volume / price movement correlation.
 if len(volume_df) >= 2:
 
-    correlation = volume_df[
-        [
-            "volume",
-            "absolute_daily_change_pct"
+    correlation = (
+        volume_df[
+            [
+                "volume",
+                "absolute_daily_change_pct"
+            ]
         ]
-    ].corr().iloc[0, 1]
+        .corr()
+        .iloc[0, 1]
+    )
 
     findings.append({
-        "candidate":
-            "Volume / price movement correlation",
-        "date":
-            "",
-        "value":
-            correlation,
-        "unit":
-            "correlation"
+        "candidate": "Volume / price movement correlation",
+        "date": "",
+        "value": correlation,
+        "unit": "correlation"
     })
 
 
-# ------------------------------------------------------------
-# Finding 9: Positive and negative days
-# ------------------------------------------------------------
-
-positive_days = volume_df[
-    volume_df["daily_change_pct"] > 0
+# Positive / negative / flat days.
+positive_days = df[
+    df["close"] > df["open"]
 ]
 
-negative_days = volume_df[
-    volume_df["daily_change_pct"] < 0
+negative_days = df[
+    df["close"] < df["open"]
 ]
 
-flat_days = volume_df[
-    volume_df["daily_change_pct"] == 0
+flat_days = df[
+    df["close"] == df["open"]
 ]
 
 findings.append({
-    "candidate":
-        "Number of positive days",
-    "date":
-        "",
-    "value":
-        len(positive_days),
-    "unit":
-        "days"
+    "candidate": "Number of positive days",
+    "date": "",
+    "value": len(positive_days),
+    "unit": "days"
 })
 
 findings.append({
-    "candidate":
-        "Number of negative days",
-    "date":
-        "",
-    "value":
-        len(negative_days),
-    "unit":
-        "days"
+    "candidate": "Number of negative days",
+    "date": "",
+    "value": len(negative_days),
+    "unit": "days"
 })
 
 findings.append({
-    "candidate":
-        "Number of flat days",
-    "date":
-        "",
-    "value":
-        len(flat_days),
-    "unit":
-        "days"
+    "candidate": "Number of flat days",
+    "date": "",
+    "value": len(flat_days),
+    "unit": "days"
 })
+
 
 if not positive_days.empty:
 
     findings.append({
-        "candidate":
-            "Average positive-day movement",
-        "date":
-            "",
-        "value":
-            positive_days[
-                "daily_change_pct"
-            ].mean(),
-        "unit":
-            "%"
+        "candidate": "Average positive-day movement",
+        "date": "",
+        "value": positive_days["daily_change_pct"].mean(),
+        "unit": "%"
     })
+
 
 if not negative_days.empty:
 
     findings.append({
-        "candidate":
-            "Average absolute negative-day movement",
-        "date":
-            "",
-        "value":
-            negative_days[
-                "daily_change_pct"
-            ].abs().mean(),
-        "unit":
-            "%"
+        "candidate": "Average absolute negative-day movement",
+        "date": "",
+        "value": negative_days["daily_change_pct"].abs().mean(),
+        "unit": "%"
     })
 
 
 # ============================================================
-# 6. PRINT ALL FINDINGS
+# 8. PRINT FINDINGS
 # ============================================================
 
 print()
@@ -505,7 +488,6 @@ print("CANDIDATE FINDINGS")
 print("=" * 70)
 
 for finding in findings:
-
     print(
         f"{finding['candidate']}: "
         f"{finding['value']} "
@@ -514,8 +496,7 @@ for finding in findings:
 
 
 # ============================================================
-# 7. CHART 1
-# CLOSING PRICE
+# 9. CHART 1 - CLOSING PRICE
 # ============================================================
 
 fig1 = go.Figure()
@@ -535,18 +516,18 @@ fig1.add_trace(
 
 fig1.update_layout(
     title=(
-        f"{COMPANY_NAME}: Closing price over time"
+        f"{COMPANY_NAME}: "
+        "Closing price over time"
     ),
     xaxis_title="Trading date",
-    yaxis_title="Closing price (INR per share)",
+    yaxis_title="Closing price (local currency per share)",
     template="plotly_white",
     height=600
 )
 
 
 # ============================================================
-# 8. CHART 2
-# DAILY PRICE MOVEMENT
+# 10. CHART 2 - DAILY PRICE MOVEMENT
 # ============================================================
 
 fig2 = go.Figure()
@@ -565,7 +546,8 @@ fig2.add_trace(
 
 fig2.update_layout(
     title=(
-        f"{COMPANY_NAME}: Daily price movement"
+        f"{COMPANY_NAME}: "
+        "Daily price movement"
     ),
     xaxis_title="Trading date",
     yaxis_title="Change from open to close (%)",
@@ -575,8 +557,7 @@ fig2.update_layout(
 
 
 # ============================================================
-# 9. CHART 3
-# DAILY VOLUME
+# 11. CHART 3 - DAILY TRADING VOLUME
 # ============================================================
 
 fig3 = go.Figure()
@@ -587,7 +568,7 @@ fig3.add_trace(
         y=volume_df["volume"],
         hovertemplate=(
             "Date: %{x|%d %b %Y}"
-            "<br>Volume: %{y:,.0f} shares"
+            "<br>Trading volume: %{y:,.0f} shares"
             "<extra></extra>"
         )
     )
@@ -595,7 +576,8 @@ fig3.add_trace(
 
 fig3.update_layout(
     title=(
-        f"{COMPANY_NAME}: Daily trading volume"
+        f"{COMPANY_NAME}: "
+        "Daily trading volume"
     ),
     xaxis_title="Trading date",
     yaxis_title="Trading volume (shares)",
@@ -605,8 +587,7 @@ fig3.update_layout(
 
 
 # ============================================================
-# 10. CHART 4
-# INTRADAY RANGE
+# 12. CHART 4 - INTRADAY VOLATILITY
 # ============================================================
 
 fig4 = go.Figure()
@@ -625,7 +606,8 @@ fig4.add_trace(
 
 fig4.update_layout(
     title=(
-        f"{COMPANY_NAME}: Daily intraday price range"
+        f"{COMPANY_NAME}: "
+        "Daily intraday price range"
     ),
     xaxis_title="Trading date",
     yaxis_title="Intraday price range (%)",
@@ -635,22 +617,17 @@ fig4.update_layout(
 
 
 # ============================================================
-# 11. CHART 5
-# VOLUME VS PRICE MOVEMENT
+# 13. CHART 5 - VOLUME VS DAILY PRICE MOVEMENT
 # ============================================================
 
 fig5 = go.Figure()
 
 fig5.add_trace(
     go.Scatter(
-        x=volume_df[
-            "absolute_daily_change_pct"
-        ],
+        x=volume_df["absolute_daily_change_pct"],
         y=volume_df["volume"],
         mode="markers",
-        text=volume_df[
-            "date"
-        ].dt.strftime("%d %b %Y"),
+        text=volume_df["date"].dt.strftime("%d %b %Y"),
         hovertemplate=(
             "Date: %{text}"
             "<br>Absolute price movement: %{x:.2f}%"
@@ -662,8 +639,8 @@ fig5.add_trace(
 
 fig5.update_layout(
     title=(
-        f"{COMPANY_NAME}: Trading volume versus "
-        "daily price movement"
+        f"{COMPANY_NAME}: "
+        "Trading volume versus daily price movement"
     ),
     xaxis_title="Absolute daily price movement (%)",
     yaxis_title="Trading volume (shares)",
@@ -673,22 +650,16 @@ fig5.update_layout(
 
 
 # ============================================================
-# 12. CHART 6
-# VOLUME CONCENTRATION
+# 14. CHART 6 - VOLUME CONCENTRATION
 # ============================================================
 
 ranked = (
     volume_df
-    .sort_values(
-        "volume",
-        ascending=False
-    )
+    .sort_values("volume", ascending=False)
     .reset_index(drop=True)
 )
 
-ranked["volume_rank"] = (
-    ranked.index + 1
-)
+ranked["volume_rank"] = ranked.index + 1
 
 ranked["cumulative_volume_share"] = (
     ranked["volume"].cumsum()
@@ -714,9 +685,7 @@ fig6.add_trace(
 fig6.add_trace(
     go.Scatter(
         x=ranked["volume_rank"],
-        y=ranked[
-            "cumulative_volume_share"
-        ],
+        y=ranked["cumulative_volume_share"],
         name="Cumulative volume share",
         yaxis="y2",
         hovertemplate=(
@@ -729,7 +698,8 @@ fig6.add_trace(
 
 fig6.update_layout(
     title=(
-        f"{COMPANY_NAME}: Concentration of trading volume"
+        f"{COMPANY_NAME}: "
+        "Concentration of trading volume"
     ),
     xaxis_title="Trading days ranked by volume",
     yaxis_title="Daily trading volume (shares)",
@@ -745,20 +715,68 @@ fig6.update_layout(
 
 
 # ============================================================
-# 13. CHART 7
-# POSITIVE VS NEGATIVE DAYS
+# 15. CHART 7 - CLOSED HIGHER VS CLOSED LOWER
 # ============================================================
+
+# This chart uses ALL available OHLC rows.
+# It does not depend on volume because the question is:
+# "Did the stock close higher or lower than it opened?"
+
+closed_higher_days = df[
+    df["close"] > df["open"]
+]
+
+closed_lower_days = df[
+    df["close"] < df["open"]
+]
+
+closed_unchanged_days = df[
+    df["close"] == df["open"]
+]
+
+higher_count = len(closed_higher_days)
+lower_count = len(closed_lower_days)
+unchanged_count = len(closed_unchanged_days)
+
+total_days = (
+    higher_count
+    + lower_count
+    + unchanged_count
+)
+
+higher_percentage = (
+    higher_count / total_days * 100
+    if total_days > 0
+    else 0
+)
+
+lower_percentage = (
+    lower_count / total_days * 100
+    if total_days > 0
+    else 0
+)
+
+unchanged_percentage = (
+    unchanged_count / total_days * 100
+    if total_days > 0
+    else 0
+)
 
 direction_counts = pd.DataFrame({
     "direction": [
-        "Positive",
-        "Negative",
-        "Flat"
+        "Closed higher",
+        "Closed lower",
+        "Closed unchanged"
     ],
     "days": [
-        len(positive_days),
-        len(negative_days),
-        len(flat_days)
+        higher_count,
+        lower_count,
+        unchanged_count
+    ],
+    "percentage": [
+        higher_percentage,
+        lower_percentage,
+        unchanged_percentage
     ]
 })
 
@@ -768,19 +786,31 @@ fig7.add_trace(
     go.Bar(
         x=direction_counts["direction"],
         y=direction_counts["days"],
+        text=[
+            f"{days} days ({percentage:.1f}%)"
+            for days, percentage
+            in zip(
+                direction_counts["days"],
+                direction_counts["percentage"]
+            )
+        ],
+        textposition="auto",
         hovertemplate=(
-            "%{x} days: %{y}"
+            "%{x}"
+            "<br>Trading days: %{y}"
+            "<br>Percentage of days: %{customdata:.1f}%"
             "<extra></extra>"
-        )
+        ),
+        customdata=direction_counts["percentage"]
     )
 )
 
 fig7.update_layout(
     title=(
-        f"{COMPANY_NAME}: Positive versus negative "
-        "trading days"
+        f"{COMPANY_NAME}: "
+        "Most trading days closed above the opening price"
     ),
-    xaxis_title="Daily price direction",
+    xaxis_title="Daily closing direction",
     yaxis_title="Number of trading days",
     template="plotly_white",
     height=600
@@ -788,22 +818,17 @@ fig7.update_layout(
 
 
 # ============================================================
-# 14. CHART 8
-# VOLUME VS INTRADAY VOLATILITY
+# 16. CHART 8 - VOLUME VS INTRADAY VOLATILITY
 # ============================================================
 
 fig8 = go.Figure()
 
 fig8.add_trace(
     go.Scatter(
-        x=volume_df[
-            "intraday_range_pct"
-        ],
+        x=volume_df["intraday_range_pct"],
         y=volume_df["volume"],
         mode="markers",
-        text=volume_df[
-            "date"
-        ].dt.strftime("%d %b %Y"),
+        text=volume_df["date"].dt.strftime("%d %b %Y"),
         hovertemplate=(
             "Date: %{text}"
             "<br>Intraday range: %{x:.2f}%"
@@ -815,8 +840,8 @@ fig8.add_trace(
 
 fig8.update_layout(
     title=(
-        f"{COMPANY_NAME}: Trading volume versus "
-        "intraday volatility"
+        f"{COMPANY_NAME}: "
+        "Trading volume versus intraday volatility"
     ),
     xaxis_title="Intraday price range (%)",
     yaxis_title="Trading volume (shares)",
@@ -826,23 +851,26 @@ fig8.update_layout(
 
 
 # ============================================================
-# 15. CHART 9
-# EXTREME DAILY MOVEMENTS
+# 17. CHART 9 - EXTREME DAILY MOVEMENTS
 # ============================================================
+
+number_of_extremes = min(5, len(df))
 
 extreme_days = pd.concat([
     df.nlargest(
-        min(5, len(df)),
+        number_of_extremes,
         "daily_change_pct"
     ),
     df.nsmallest(
-        min(5, len(df)),
+        number_of_extremes,
         "daily_change_pct"
     )
-]).drop_duplicates(
-    subset=["date"]
-).sort_values(
-    "daily_change_pct"
+])
+
+extreme_days = (
+    extreme_days
+    .drop_duplicates(subset=["date"])
+    .sort_values("daily_change_pct")
 )
 
 fig9 = go.Figure()
@@ -861,7 +889,8 @@ fig9.add_trace(
 
 fig9.update_layout(
     title=(
-        f"{COMPANY_NAME}: Largest daily price movements"
+        f"{COMPANY_NAME}: "
+        "Largest daily price movements"
     ),
     xaxis_title="Trading date",
     yaxis_title="Daily price change (%)",
@@ -871,8 +900,7 @@ fig9.update_layout(
 
 
 # ============================================================
-# 16. CHART 10
-# CUMULATIVE RETURN
+# 18. CHART 10 - CUMULATIVE PRICE CHANGE
 # ============================================================
 
 fig10 = go.Figure()
@@ -892,7 +920,8 @@ fig10.add_trace(
 
 fig10.update_layout(
     title=(
-        f"{COMPANY_NAME}: Cumulative price change "
+        f"{COMPANY_NAME}: "
+        "Cumulative price change "
         "from the start of the period"
     ),
     xaxis_title="Trading date",
@@ -903,7 +932,7 @@ fig10.update_layout(
 
 
 # ============================================================
-# 17. CHART DESCRIPTIONS
+# 19. CHART TITLES AND EXPLANATIONS
 # ============================================================
 
 charts = [
@@ -912,11 +941,11 @@ charts = [
         "closing-price",
         "Closing Price",
         (
-            "This chart shows the closing share price of "
-            "Reliance Industries for each trading day in "
-            "the analysis period. It helps identify the "
-            "overall direction and magnitude of price "
-            "changes over time."
+            "This chart shows the closing share price "
+            f"of {COMPANY_NAME} for each trading day "
+            "in the analysis period. It helps identify "
+            "the overall direction and magnitude of "
+            "price changes over time."
         ),
         fig1
     ),
@@ -925,11 +954,12 @@ charts = [
         "daily-price-movement",
         "Daily Price Movement",
         (
-            "This chart shows the percentage change from "
-            "the opening price to the closing price for "
-            "each trading day. Positive values indicate "
-            "an increase during the day, while negative "
-            "values indicate a decline."
+            "This chart shows the percentage change "
+            "from the opening price to the closing price "
+            "for each trading day. Positive values mean "
+            "the share price finished the day above its "
+            "opening price, while negative values mean "
+            "it finished below its opening price."
         ),
         fig2
     ),
@@ -938,9 +968,9 @@ charts = [
         "daily-volume",
         "Daily Trading Volume",
         (
-            "This chart shows the number of Reliance "
-            "Industries shares recorded as traded on "
-            "each valid-volume trading day. It helps "
+            "This chart shows the number of shares "
+            f"recorded as traded for {COMPANY_NAME} "
+            "on each valid-volume trading day. It helps "
             "identify days when trading activity was "
             "unusually high or low."
         ),
@@ -953,9 +983,10 @@ charts = [
         (
             "This chart measures the difference between "
             "the highest and lowest recorded price during "
-            "each trading day as a percentage of the "
-            "opening price. A larger percentage indicates "
-            "greater intraday price movement."
+            "each trading day, expressed as a percentage "
+            "of the opening price. A larger percentage "
+            "means the share price moved through a wider "
+            "range during that day."
         ),
         fig4
     ),
@@ -964,10 +995,11 @@ charts = [
         "volume-price-movement",
         "Trading Volume Versus Daily Price Movement",
         (
-            "This chart compares trading volume with the "
-            "absolute size of the daily price movement. "
-            "Each point represents one trading day and "
-            "helps assess whether days with greater "
+            "This chart compares the number of shares "
+            f"traded for {COMPANY_NAME} with the absolute "
+            "size of the open-to-close price movement. "
+            "Each point represents one trading day. "
+            "It helps assess whether days with greater "
             "trading activity also experienced larger "
             "price movements."
         ),
@@ -983,21 +1015,21 @@ charts = [
             "cumulative share of total recorded volume. "
             "It helps determine whether a large proportion "
             "of trading activity was concentrated in a "
-            "small number of days."
+            "small number of unusually busy days."
         ),
         fig6
     ),
 
     (
         "positive-negative-days",
-        "Positive Versus Negative Trading Days",
+        "Closed Higher Versus Closed Lower",
         (
             "This chart compares the number of trading "
-            "days on which the closing price was above, "
-            "below, or equal to the opening price. It "
-            "shows whether upward or downward daily "
-            "movements were more common during the "
-            "analysis period."
+            f"days on which {COMPANY_NAME} closed above "
+            "its opening price with the number of days "
+            "on which it closed below its opening price. "
+            "The percentages show what proportion of "
+            "the trading period each direction represents."
         ),
         fig7
     ),
@@ -1006,11 +1038,12 @@ charts = [
         "volume-volatility",
         "Trading Volume Versus Intraday Volatility",
         (
-            "This chart compares trading volume with the "
-            "size of the intraday price range. Each point "
-            "represents one trading day and helps identify "
-            "whether higher trading activity occurred on "
-            "days with wider price movements."
+            "This chart compares trading volume with "
+            "the size of the intraday price range. "
+            "Each point represents one trading day. "
+            "It helps identify whether higher trading "
+            "activity occurred on days when the share "
+            "price moved through a wider intraday range."
         ),
         fig8
     ),
@@ -1021,9 +1054,10 @@ charts = [
         (
             "This chart displays the trading days with "
             "the largest upward and downward movements "
-            "from opening to closing price. It highlights "
-            "the most significant daily price changes "
-            "in the analysis period."
+            f"for {COMPANY_NAME}, measured from opening "
+            "price to closing price. It highlights the "
+            "most significant daily price changes in "
+            "the analysis period."
         ),
         fig9
     ),
@@ -1032,11 +1066,11 @@ charts = [
         "cumulative-return",
         "Cumulative Price Change From the Start of the Period",
         (
-            "This chart shows how the closing price changed "
-            "relative to the first recorded closing price "
-            "in the dataset. It provides a view of the "
-            "overall price change accumulated across the "
-            "analysis period."
+            "This chart shows how the closing price "
+            f"of {COMPANY_NAME} changed relative to "
+            "the first recorded closing price in the "
+            "dataset. It provides a view of the overall "
+            "price change across the analysis period."
         ),
         fig10
     ),
@@ -1044,8 +1078,44 @@ charts = [
 
 
 # ============================================================
-# 18. CREATE SELF-CONTAINED HTML
+# 20. SAVE EACH CHART AS PNG
 # ============================================================
+
+print()
+print("=" * 70)
+print("SAVING CHART IMAGES")
+print("=" * 70)
+
+for (
+    anchor,
+    title,
+    description,
+    figure
+) in charts:
+
+    image_file = (
+        IMAGE_DIR
+        / f"{anchor}.png"
+    )
+
+    figure.write_image(
+        image_file,
+        width=1400,
+        height=800,
+        scale=2
+    )
+
+    print(f"Saved: {image_file}")
+
+
+# ============================================================
+# 21. CREATE SELF-CONTAINED HTML REPORT
+# ============================================================
+
+print()
+print("=" * 70)
+print("CREATING HTML REPORT")
+print("=" * 70)
 
 html_sections = []
 
@@ -1059,18 +1129,18 @@ for index, (
     chart_html = plot(
         figure,
         include_plotlyjs=(
-            True if index == 0 else False
+            True
+            if index == 0
+            else False
         ),
-        output_type="div",
+        output_type="div"
     )
 
     html_sections.append(
         f"""
         <section id="{anchor}">
 
-            <h2>
-                {title}
-            </h2>
+            <h2>{title}</h2>
 
             <p class="chart-description">
                 {description}
@@ -1082,6 +1152,10 @@ for index, (
         """
     )
 
+
+# ============================================================
+# 22. HTML REPORT
+# ============================================================
 
 report = f"""
 <!DOCTYPE html>
@@ -1099,34 +1173,87 @@ report = f"""
 <style>
 
 body {{
-    font-family: Arial, sans-serif;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 30px;
-    line-height: 1.5;
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    max-width:
+        1200px;
+
+    margin:
+        0 auto;
+
+    padding:
+        30px;
+
+    line-height:
+        1.5;
 }}
 
 h1 {{
-    margin-bottom: 10px;
+    margin-bottom:
+        10px;
+}}
+
+h2 {{
+    margin-bottom:
+        10px;
 }}
 
 section {{
-    margin-top: 60px;
-    scroll-margin-top: 20px;
+    margin-top:
+        60px;
+
+    scroll-margin-top:
+        20px;
 }}
 
 .chart-description {{
-    font-size: 16px;
-    color: #444;
-    margin-bottom: 20px;
-    max-width: 1000px;
+    font-size:
+        16px;
+
+    color:
+        #444;
+
+    margin-bottom:
+        20px;
+
+    max-width:
+        1000px;
 }}
 
 .note {{
-    padding: 15px;
-    background: #f4f4f4;
-    border-radius: 5px;
-    margin-bottom: 30px;
+    padding:
+        15px;
+
+    background:
+        #f4f4f4;
+
+    border-radius:
+        5px;
+
+    margin-bottom:
+        30px;
+}}
+
+.summary {{
+    padding:
+        15px;
+
+    border:
+        1px solid #ddd;
+
+    border-radius:
+        5px;
+
+    margin-bottom:
+        30px;
+}}
+
+a {{
+    color:
+        #0645ad;
 }}
 
 </style>
@@ -1139,21 +1266,68 @@ section {{
 {COMPANY_NAME} Analytics Report
 </h1>
 
+<div class="summary">
+
 <p>
-Candidate charts and findings generated from the
-transformed market-data CSV.
+<strong>Purpose:</strong>
+
+This report contains candidate charts and findings
+generated from the transformed market-data CSV.
+The charts are exploratory and are intended to help
+identify business claims supported by the data.
 </p>
+
+</div>
 
 <div class="note">
 
 <strong>Data treatment:</strong>
 
+<p>
 Synthetic observations and rows without recorded
 volume are excluded from volume-based calculations.
-OHLC-derived measures use the available open, high,
-and low values.
+OHLC-derived measures use the available opening,
+high, low and closing prices.
+</p>
+
+<p>
+The analysis period is:
+
+<strong>{df["date"].min().date()}</strong>
+
+to
+
+<strong>{df["date"].max().date()}</strong>.
+</p>
+
+<p>
+Total observations:
+
+<strong>{len(df)}</strong>.
+</p>
+
+<p>
+Valid observations used for volume analysis:
+
+<strong>{len(volume_df)}</strong>.
+</p>
 
 </div>
+
+<h2>
+Candidate Charts
+</h2>
+
+<ul>
+
+{
+"".join(
+    f'<li><a href="#{anchor}">{title}</a></li>'
+    for anchor, title, _, _ in charts
+)
+}
+
+</ul>
 
 {"".join(html_sections)}
 
@@ -1163,6 +1337,10 @@ and low values.
 """
 
 
+# ============================================================
+# 23. WRITE HTML REPORT
+# ============================================================
+
 REPORT_FILE.write_text(
     report,
     encoding="utf-8"
@@ -1170,10 +1348,12 @@ REPORT_FILE.write_text(
 
 
 # ============================================================
-# 19. SAVE CANDIDATE FINDINGS
+# 24. SAVE CANDIDATE FINDINGS
 # ============================================================
 
-findings_df = pd.DataFrame(findings)
+findings_df = pd.DataFrame(
+    findings
+)
 
 findings_df.to_csv(
     FINDINGS_FILE,
@@ -1182,7 +1362,7 @@ findings_df.to_csv(
 
 
 # ============================================================
-# 20. FINAL OUTPUT
+# 25. FINAL OUTPUT
 # ============================================================
 
 print()
@@ -1190,25 +1370,35 @@ print("=" * 70)
 print("OUTPUT")
 print("=" * 70)
 
-print(
-    f"HTML report: {REPORT_FILE}"
-)
+print("HTML report:")
+print(f"  {REPORT_FILE}")
 
-print(
-    f"Candidate findings: {FINDINGS_FILE}"
-)
+print()
+print("Candidate findings:")
+print(f"  {FINDINGS_FILE}")
+
+print()
+print("Chart images:")
+print(f"  {IMAGE_DIR}")
 
 print()
 print("Charts generated:")
 
-for anchor, title, _, _ in charts:
+for (
+    anchor,
+    title,
+    description,
+    figure
+) in charts:
 
+    print(f"  {title}")
     print(
-        f"  {title}"
+        f"    HTML: "
+        f"report_{TICKER}.html#{anchor}"
     )
-
     print(
-        f"    report.html#{anchor}"
+        f"    PNG: "
+        f"{IMAGE_DIR / f'{anchor}.png'}"
     )
 
 print()
