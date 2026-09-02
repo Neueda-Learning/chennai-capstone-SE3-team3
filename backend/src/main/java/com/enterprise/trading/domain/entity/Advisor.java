@@ -18,36 +18,48 @@ public class Advisor {
             String passwordHash,
             LocalDate hireDate) {
 
+        // Advisor ID must be at least 1
         if (advisorId < 1) {
             throw new IllegalArgumentException(
-                    "Advisor ID must be at least 1");
+                    "Advisor ID must be at least 1"
+            );
         }
 
+        // Advisor name cannot be null or blank
         if (advisorName == null || advisorName.isBlank()) {
             throw new IllegalArgumentException(
-                    "Advisor name is required");
+                    "Advisor name is required"
+            );
         }
 
+        // Email cannot be null or blank
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException(
-                    "Email is required");
+                    "Email is required"
+            );
         }
 
+        // Password hash cannot be null or blank
         if (passwordHash == null || passwordHash.isBlank()) {
             throw new IllegalArgumentException(
-                    "Password hash is required");
+                    "Password hash is required"
+            );
         }
 
+        // Hire date cannot be null
         Objects.requireNonNull(
                 hireDate,
-                "Hire date is required");
+                "Hire date is required"
+        );
 
+        // Assign validated values
         this.advisorId = advisorId;
         this.advisorName = advisorName;
         this.email = email;
         this.passwordHash = passwordHash;
         this.hireDate = hireDate;
     }
+
     public int getAdvisorId() {
         return advisorId;
     }
@@ -68,3 +80,4 @@ public class Advisor {
         return hireDate;
     }
 }
+

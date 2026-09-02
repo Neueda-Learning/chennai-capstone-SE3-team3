@@ -17,7 +17,6 @@ public class Client {
     private final RiskProfile riskProfile;
     private final int advisorId;
 
-
     public Client(
             int clientId,
             String clientName,
@@ -31,49 +30,59 @@ public class Client {
 
         if (clientId < 1) {
             throw new IllegalArgumentException(
-                    "Client ID must be at least 1");
+                    "Client ID must be at least 1"
+            );
         }
 
         if (clientName == null || clientName.isBlank()) {
             throw new IllegalArgumentException(
-                    "Client name is required");
+                    "Client name is required"
+            );
         }
 
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException(
-                    "Email is required");
+                    "Email is required"
+            );
         }
 
         if (passwordHash == null || passwordHash.isBlank()) {
             throw new IllegalArgumentException(
-                    "Password hash is required");
+                    "Password hash is required"
+            );
         }
 
         if (phoneNo == null || phoneNo.isBlank()) {
             throw new IllegalArgumentException(
-                    "Phone number is required");
+                    "Phone number is required"
+            );
         }
 
         Objects.requireNonNull(
                 dateOfBirth,
-                "Date of birth is required");
+                "Date of birth is required"
+        );
 
         Objects.requireNonNull(
                 joinDate,
-                "Join date is required");
+                "Join date is required"
+        );
 
         if (joinDate.isBefore(dateOfBirth)) {
             throw new IllegalArgumentException(
-                    "Join date cannot be before date of birth");
+                    "Join date cannot be before date of birth"
+            );
         }
 
         Objects.requireNonNull(
                 riskProfile,
-                "Risk profile is required");
+                "Risk profile is required"
+        );
 
         if (advisorId < 1) {
             throw new IllegalArgumentException(
-                    "Advisor ID must be at least 1");
+                    "Advisor ID must be at least 1"
+            );
         }
 
         this.clientId = clientId;
@@ -86,7 +95,6 @@ public class Client {
         this.riskProfile = riskProfile;
         this.advisorId = advisorId;
     }
-
 
     public int getClientId() {
         return clientId;
@@ -124,3 +132,4 @@ public class Client {
         return advisorId;
     }
 }
+
