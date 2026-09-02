@@ -22,7 +22,7 @@ public class InstrumentTest {
         );
 
         assertEquals("RELIANCE.NS", instrument.getInstrumentTicker());
-        assertEquals("Reliance Industries", instrument.getInstrumentTicker());
+        assertEquals("Reliance Industries", instrument.getInstrumentName());
         assertEquals(InstrumentAssetClass.EQUITY, instrument.getAssetClass());
         assertEquals(InstrumentStatus.TRADING, instrument.getInstrumentStatus());
     }
@@ -63,9 +63,10 @@ public class InstrumentTest {
                 "RELIANCE.NS",
                 "Reliance Industries",
                 InstrumentAssetClass.EQUITY,
-                InstrumentStatus.TRADING
+                InstrumentStatus.RETIRED
         );
 
         assertFalse(instrument.isTradable());
     }
 }
+
