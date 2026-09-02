@@ -1,0 +1,180 @@
+classDiagram
+
+    %% =========================================================
+    %% ADVISOR
+    %% =========================================================
+
+    class Advisor {
+        -int advisorId
+        -String advisorName
+        -String email
+        -String passwordHash
+        -LocalDate hireDate
+    }
+
+
+    %% =========================================================
+    %% CLIENT
+    %% =========================================================
+
+    class Client {
+        -int clientId
+        -String clientName
+        -String email
+        -String passwordHash
+        -String phoneNo
+        -LocalDate dateOfBirth
+        -LocalDate joinDate
+        -RiskProfile riskProfile
+        -int advisorId
+    }
+
+
+    %% =========================================================
+    %% ACCOUNT
+    %% =========================================================
+
+    class Account {
+        -int accountId
+        -String accountNumber
+        -LocalDate openingDate
+        -BigDecimal balance
+        -BigDecimal purchasingPower
+        -AccountStatus accountStatus
+        -String currency
+        -long version
+        -OffsetDateTime suspendedAt
+        -OffsetDateTime closedAt
+        -int clientId
+    }
+
+
+    %% =========================================================
+    %% INSTRUMENT
+    %% =========================================================
+
+    class Instrument {
+        -int instrumentId
+        -String instrumentTicker
+        -String instrumentName
+        -InstrumentAssetClass assetClass
+        -InstrumentStatus instrumentStatus
+    }
+
+
+    %% =========================================================
+    %% ORDER
+    %% =========================================================
+
+    class Order {
+        -long orderId
+        -String idempotencyKey
+        -OrderStatus orderStatus
+        -OffsetDateTime receivedAt
+        -OrderSide orderSide
+        -BigDecimal price
+        -long quantity
+        -OffsetDateTime transactionDate
+        -int accountId
+        -int instrumentId
+    }
+
+
+    %% =========================================================
+    %% HOLDING
+    %% =========================================================
+
+    class Holding {
+        -int holdingId
+        -long quantity
+        -BigDecimal purchasePrice
+        -int accountId
+        -int instrumentId
+    }
+
+
+    %% =========================================================
+    %% ENUMS
+    %% =========================================================
+
+    class AccountStatus {
+        <<enumeration>>
+        ACTIVE
+        SUSPENDED
+        CLOSED
+    }
+
+
+    class InstrumentAssetClass {
+        <<enumeration>>
+        EQUITY
+        BOND
+        ETF
+        FUND
+    }
+
+
+    class InstrumentStatus {
+        <<enumeration>>
+        TRADING
+        HALTED
+        RETIRED
+    }
+
+
+    class OrderSide {
+        <<enumeration>>
+        BUY
+        SELL
+    }
+
+
+    class OrderStatus {
+        <<enumeration>>
+        RECEIVED
+        FILLED
+        REJECTED
+        CANCELLED
+    }
+
+
+    class RiskProfile {
+        <<enumeration>>
+        CONSERVATIVE
+        MODERATE
+        AGGRESSIVE
+    }
+
+
+    %% =========================================================
+    %% RELATIONSHIPS
+    %% =========================================================
+
+    Advisor "1" --> "0..*" Client : advises
+
+    Client "1" --> "1..*" Account : owns
+
+    Account "1" --> "0..*" Order : places
+
+    Instrument "1" --> "0..*" Order : traded in
+
+    Account "1" --> "0..*" Holding : owns
+
+    Instrument "1" --> "0..*" Holding : held as
+
+
+    %% =========================================================
+    %% ENUM ASSOCIATIONS
+    %% =========================================================
+
+    Account --> AccountStatus : has
+
+    Client --> RiskProfile : has
+
+    Instrument --> InstrumentAssetClass : classified as
+
+    Instrument --> InstrumentStatus : has
+
+    Order --> OrderSide : uses
+
+    Order --> OrderStatus : has
