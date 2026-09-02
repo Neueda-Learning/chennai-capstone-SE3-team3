@@ -1,0 +1,209 @@
+sequenceDiagram
+    autonumber
+
+    actor Client
+
+    participant Advisor
+    participant Account
+    participant Order as Order
+    participant Instrument
+    participant Holdings
+    Client->>Advisor: Request BUY/SELL trade
+
+    Advisor->>Account: Find client account
+
+    alt Account does not exist
+
+        Account-->>Advisor: Account not found
+        Advisor-->>Client: Trade rejected - no account
+
+
+    else Account exists
+
+        Account-->>Advisor: Account found
+
+        Advisor->>Account: Check accountStatus
+
+        alt Account status = CLOSED
+
+            Account-->>Advisor: Account is CLOSED
+            Advisor-->>Client: Trade rejected - account closed
+
+        else Account status = SUSPENDED
+
+            Account-->>Advisor: Account is SUSPENDED
+            Advisor-->>Client: Trade rejected - account suspended
+
+        else Account status = ACTIVE
+
+            Account-->>Advisor: Account is ACTIVE
+
+            Advisor->>Order: Create order
+
+            Order->>Order: Validate order fields
+
+            Note over Order: quantity > 0<br/>price > 0<br/>idempotencyKey must be unique<br/>orderSide must be BUY or SELL
+
+
+            alt Invalid quantity
+
+                Order->>Order: Set orderStatus = REJECTED
+                Order-->>Client: Order rejected - invalid quantity
+
+
+            else Invalid price
+
+                Order->>Order: Set orderStatus = REJECTED
+                Order-->>Client: Order rejected - invalid price
+
+
+            else Duplicate idempotency key
+
+                Order->>Order: Set orderStatus = REJECTED
+                Order-->>Client: Order rejected - duplicate request
+
+
+            else Order validation successful
+
+                Order->>Order: Set orderStatus = RECEIVED
+
+                Order->>Instrument: Check instrumentStatus
+
+
+                alt Instrument HALTED
+
+                    Instrument-->>Order: HALTED
+                    Order->>Order: Set orderStatus = REJECTED
+                    Order-->>Client: Order rejected - instrument halted
+
+
+                else Instrument RETIRED
+
+                    Instrument-->>Order: RETIRED
+                    Order->>Order: Set orderStatus = REJECTED
+                    Order-->>Client: Order rejected - instrument retired
+
+
+                else Instrument TRADING
+
+                    Instrument-->>Order: TRADING
+
+                    alt orderSide = BUY
+
+                        Order->>Account: Check purchasingPower
+
+
+                        alt Insufficient purchasing power
+
+                            Account-->>Order: Insufficient funds
+
+                            Order->>Order: Set orderStatus = REJECTED
+
+                            Order-->>Client: BUY rejected - insufficient purchasing power
+
+
+                        else Sufficient purchasing power
+
+                            Account-->>Order: Purchasing power available
+
+                            Account->>Account: Reduce purchasingPower
+
+                            Order->>Order: Set orderStatus = FILLED
+
+                            Order->>Holdings: Find holding for account + instrument
+
+
+                            alt Holding does not exist
+
+                                Holdings->>Holdings: Create new holding
+
+                                Note over Holdings: quantity = order.quantity<br/>purchasePrice = order.price
+
+                                Holdings-->>Order: Holding created
+
+
+                            else Holding already exists
+
+                                Holdings->>Holdings: Increase quantity
+
+                                Holdings->>Holdings: Update purchase price
+
+                                Holdings-->>Order: Holding updated
+
+                            end
+
+
+                            Order-->>Client: BUY order completed
+
+
+                        end
+
+                    else orderSide = SELL
+
+                        Order->>Holdings: Find holding for account + instrument
+
+
+                        alt Holding does not exist
+
+                            Holdings-->>Order: No holding found
+
+                            Order->>Order: Set orderStatus = REJECTED
+
+                            Order-->>Client: SELL rejected - no holding
+
+
+                        else Holding exists
+
+                            Holdings->>Holdings: Check available quantity
+
+
+                            alt Holding quantity < order.quantity
+
+                                Holdings-->>Order: Insufficient quantity
+
+                                Order->>Order: Set orderStatus = REJECTED
+
+                                Order-->>Client: SELL rejected - insufficient holdings
+
+
+                            else Sufficient holding quantity
+
+                                Holdings-->>Order: Quantity available
+
+                                Holdings->>Holdings: Reduce quantity
+
+                                Order->>Order: Set orderStatus = FILLED
+
+
+                                alt Remaining quantity = 0
+
+                                    Holdings->>Holdings: Delete holding record
+
+                                    Holdings-->>Order: Holding removed
+
+
+                                else Remaining quantity > 0
+
+                                    Holdings-->>Order: Holding quantity updated
+
+                                end
+
+
+                                Account->>Account: Increase purchasingPower
+
+                                Order-->>Client: SELL order completed
+
+
+                            end
+
+                        end
+
+                    end
+
+                end
+
+            end
+
+        end
+
+    end
