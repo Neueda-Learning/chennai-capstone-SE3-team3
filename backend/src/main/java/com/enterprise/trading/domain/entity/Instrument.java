@@ -7,7 +7,9 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
-public class Instrument {
+import java.util.Objects;
+
+ public class Instrument {
 
     @Positive
     private final int instrumentId;
@@ -26,21 +28,53 @@ public class Instrument {
     @NotNull
     private InstrumentStatus instrumentStatus;
 
-    public Instrument(
-            int instrumentId,
-            String instrumentTicker,
-            String instrumentName,
-            InstrumentAssetClass assetClass,
-            InstrumentStatus instrumentStatus) {
+     public Instrument(
+             int instrumentId,
+             String instrumentTicker,
+             String instrumentName,
+             InstrumentAssetClass assetClass,
+             InstrumentStatus instrumentStatus) {
 
-        this.instrumentId = instrumentId;
-        this.instrumentTicker = instrumentTicker;
-        this.instrumentName = instrumentName;
-        this.assetClass = assetClass;
-        this.instrumentStatus = instrumentStatus;
-    }
+         if (instrumentId < 1) {
+             throw new IllegalArgumentException(
+                     "Instrument ID must be at least 1");
+         }
 
-    public int getInstrumentId() {
+         if (instrumentTicker == null || instrumentTicker.isBlank()) {
+             throw new IllegalArgumentException(
+                     "Instrument ticker is required");
+         }
+
+         if (instrumentTicker.length() > 20) {
+             throw new IllegalArgumentException(
+                     "Instrument ticker cannot exceed 20 characters");
+         }
+
+         Objects.requireNonNull(
+                 instrumentName,
+                 "Instrument name is required");
+
+         if (instrumentName.isBlank()) {
+             throw new IllegalArgumentException(
+                     "Instrument name cannot be blank");
+         }
+
+         Objects.requireNonNull(
+                 assetClass,
+                 "Asset class is required");
+
+         Objects.requireNonNull(
+                 instrumentStatus,
+                 "Instrument status is required");
+
+         this.instrumentId = instrumentId;
+         this.instrumentTicker = instrumentTicker;
+         this.instrumentName = instrumentName;
+         this.assetClass = assetClass;
+         this.instrumentStatus = instrumentStatus;
+     }
+
+     public int getInstrumentId() {
         return instrumentId;
     }
 
