@@ -1,6 +1,5 @@
-package com.enterprise.trading.domain;
+package com.enterprise.trading.domain.dto;
 
-import com.enterprise.trading.domain.dto.PlaceOrderRequest;
 import com.enterprise.trading.domain.enums.OrderSide;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -1,6 +1,6 @@
-package com.enterprise.trading.domain;
+package com.enterprise.trading.domain.entity;
 
-import com.enterprise.trading.domain.entity.Account;
+
 import com.enterprise.trading.domain.enums.AccountStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

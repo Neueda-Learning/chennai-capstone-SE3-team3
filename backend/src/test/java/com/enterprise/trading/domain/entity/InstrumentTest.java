@@ -1,6 +1,5 @@
-package com.enterprise.trading.domain;
+package com.enterprise.trading.domain.entity;
 
-import com.enterprise.trading.domain.entity.Instrument;
 import com.enterprise.trading.domain.enums.InstrumentAssetClass;
 import com.enterprise.trading.domain.enums.InstrumentStatus;
 import org.junit.jupiter.api.DisplayName;

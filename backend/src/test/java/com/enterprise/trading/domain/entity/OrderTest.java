@@ -1,6 +1,5 @@
-package com.enterprise.trading.domain;
+package com.enterprise.trading.domain.entity;
 
-import com.enterprise.trading.domain.entity.Order;
 import com.enterprise.trading.domain.enums.OrderSide;
 import com.enterprise.trading.domain.enums.OrderStatus;
 import org.junit.jupiter.api.DisplayName;
