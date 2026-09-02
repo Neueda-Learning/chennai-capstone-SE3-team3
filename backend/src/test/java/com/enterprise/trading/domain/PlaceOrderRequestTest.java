@@ -29,7 +29,7 @@ public class PlaceOrderRequestTest {
     @Test
     @DisplayName("rejects null accountId")
     void rejectsNullAccountId() {
-        assertThrows(IllegalArgumentException.class, () -> new PlaceOrderRequest(
+        assertThrows(NullPointerException.class, () -> new PlaceOrderRequest(
                 null,
                 "RELIANCE.NS",
                 OrderSide.BUY,
@@ -69,7 +69,7 @@ public class PlaceOrderRequestTest {
     @Test
     @DisplayName("rejects NULL symbol")
     void rejectsNullSymbol() {
-        assertThrows(IllegalArgumentException.class, () -> new PlaceOrderRequest(
+        assertThrows(NullPointerException.class, () -> new PlaceOrderRequest(
                 1L,
                 null,
                 OrderSide.BUY,
@@ -122,7 +122,7 @@ public class PlaceOrderRequestTest {
     @Test
     @DisplayName("rejects NULL order side")
     void rejectsNullOrderSide() {
-        assertThrows(IllegalArgumentException.class, () -> new PlaceOrderRequest(
+        assertThrows(NullPointerException.class, () -> new PlaceOrderRequest(
                 1L,
                 "RELIANCE.NS",
                 null,
@@ -135,7 +135,7 @@ public class PlaceOrderRequestTest {
     @Test
     @DisplayName("rejects NULL quantity")
     void rejectsNullQuantity() {
-        assertThrows(IllegalArgumentException.class, () -> new PlaceOrderRequest(
+        assertThrows(NullPointerException.class, () -> new PlaceOrderRequest(
                 1L,
                 "RELIANCE.NS",
                 OrderSide.BUY,
@@ -188,7 +188,7 @@ public class PlaceOrderRequestTest {
     @Test
     @DisplayName("rejects NULL price")
     void rejectsNullPrice() {
-        assertThrows(IllegalArgumentException.class, () -> new PlaceOrderRequest(
+        assertThrows(NullPointerException.class, () -> new PlaceOrderRequest(
                 1L,
                 "RELIANCE.NS",
                 OrderSide.BUY,
@@ -254,7 +254,7 @@ public class PlaceOrderRequestTest {
     @Test
     @DisplayName("rejects NULL idempotency key")
     void rejectsNullIdempotencyKey() {
-        assertThrows(IllegalArgumentException.class, () -> new PlaceOrderRequest(
+        assertThrows(NullPointerException.class, () -> new PlaceOrderRequest(
                 1L,
                 "RELIANCE.NS",
                 OrderSide.BUY,
