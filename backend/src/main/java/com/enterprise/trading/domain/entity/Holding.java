@@ -55,9 +55,9 @@ public class Holding {
                     "Purchase price cannot be negative");
         }
 
-        if (purchasePrice.scale() > 4) {
+        if (purchasePrice.scale() > 2) {
             throw new IllegalArgumentException(
-                    "Purchase price cannot have more than four decimal places");
+                    "Purchase price cannot have more than two decimal places");
         }
 
         if (accountId < 1) {
@@ -72,7 +72,7 @@ public class Holding {
 
         this.holdingId = holdingId;
         this.quantity = quantity;
-        this.purchasePrice = purchasePrice.setScale(4);
+        this.purchasePrice = purchasePrice.setScale(2);
         this.accountId = accountId;
         this.instrumentId = instrumentId;
     }
