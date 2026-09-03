@@ -10,6 +10,7 @@ import com.enterprise.trading.domain.enums.OrderSide;
 import com.enterprise.trading.domain.exception.AccountNotActiveException;
 import com.enterprise.trading.domain.exception.AccountNotFoundException;
 import com.enterprise.trading.domain.exception.InstrumentNotFoundException;
+import com.enterprise.trading.domain.exception.InsufficientFundsException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -40,7 +41,7 @@ public class OrderLogicTest {
                     1L,
                     "RELIANCE.NS",
                     OrderSide.BUY,
-                    10,
+                    1,
                     new BigDecimal("150.25"),
                     "IDEMPOTENCY-KEY"
             );
@@ -86,7 +87,7 @@ public class OrderLogicTest {
                     1L,
                     "RELIANCE.NS",
                     OrderSide.BUY,
-                    10,
+                    1,
                     new BigDecimal("150.25"),
                     "IDEMPOTENCY-KEY"
             );
@@ -129,7 +130,7 @@ public class OrderLogicTest {
                     1L,
                     "RELIANCE.NS",
                     OrderSide.BUY,
-                    10,
+                    1,
                     new BigDecimal("150.25"),
                     "IDEMPOTENCY-KEY"
             );
@@ -168,7 +169,7 @@ public class OrderLogicTest {
                     1L,
                     "RELIANCE.NS",
                     OrderSide.BUY,
-                    10,
+                    1,
                     new BigDecimal("150.25"),
                     "IDEMPOTENCY-KEY"
             );
@@ -216,7 +217,7 @@ public class OrderLogicTest {
                     1L,
                     "RELIANCE.NS",
                     OrderSide.BUY,
-                    10,
+                    1,
                     new BigDecimal("150.25"),
                     "IDEMPOTENCY-KEY"
             );
@@ -257,7 +258,7 @@ public class OrderLogicTest {
                     1L,
                     "RELIANCE.NS",
                     OrderSide.BUY,
-                    10,
+                    1,
                     new BigDecimal("150.25"),
                     "IDEMPOTENCY-KEY"
             );
@@ -303,7 +304,7 @@ public class OrderLogicTest {
                     1L,
                     "RELIANCE.NS",
                     OrderSide.BUY,
-                    10,
+                    1,
                     new BigDecimal("150.25"),
                     "IDEMPOTENCY-KEY"
             );
@@ -349,7 +350,7 @@ public class OrderLogicTest {
                     1L,
                     "RELIANCE.NS",
                     OrderSide.BUY,
-                    10,
+                    1,
                     new BigDecimal("150.25"),
                     "IDEMPOTENCY-KEY"
             );
@@ -395,7 +396,7 @@ public class OrderLogicTest {
                     1L,
                     "RELIANCE.NS",
                     OrderSide.BUY,
-                    10,
+                    1,
                     new BigDecimal("150.25"),
                     "IDEMPOTENCY-KEY"
             );
@@ -679,30 +680,150 @@ public class OrderLogicTest {
             );
 
             assertDoesNotThrow(() -> orderLogic.placeOrder(placeOrderRequest));
-
         }
     }
 
-//    @Nested
-//    @DisplayName("Rule 6: On a BUY, Quantity * Price <= Cash Balance")
-//    class BuyValidity {
-//
-//        @Test
-//        @DisplayName("reject buy when cost (quantity * price) > balance")
-//        void rejectBuyWhenCostGreaterThanBalance() {
-//        }
-//
-//        @Test
-//        @DisplayName("accept buy when cost = balance")
-//        void acceptBuyWhenCostEqualToBalance() {
-//        }
-//
-//        @Test
-//        @DisplayName("accept buy when cost < balance")
-//        void acceptBuyWhenCostLessThanBalance() {
-//        }
-//    }
-//
+    @Nested
+    @DisplayName("Rule 6: On a BUY, Quantity * Price <= Cash Balance")
+    class BuyValidity {
+
+        @Test
+        @DisplayName("reject buy when cost (quantity * price) > balance")
+        void rejectBuyWhenCostGreaterThanBalance() {
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            Instrument instrument = new Instrument(
+                    1,
+                    "RELIANCE.NS",
+                    "Reliance Industries",
+                    InstrumentAssetClass.EQUITY,
+                    InstrumentStatus.TRADING
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(instrument),
+                    List.of(),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.BUY,
+                    1,
+                    new BigDecimal("1100.00"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            InsufficientFundsException exception = assertThrows(InsufficientFundsException.class, () -> orderLogic.placeOrder(placeOrderRequest));
+            assertEquals(1L, exception.getAccountId());
+            assertEquals(new BigDecimal("1100.00"), exception.getRequired());
+            assertEquals(new BigDecimal("1000.00"), exception.getAvailable());
+
+        }
+
+        @Test
+        @DisplayName("accept buy when cost = balance")
+        void acceptBuyWhenCostEqualToBalance() {
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            Instrument instrument = new Instrument(
+                    1,
+                    "RELIANCE.NS",
+                    "Reliance Industries",
+                    InstrumentAssetClass.EQUITY,
+                    InstrumentStatus.TRADING
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(instrument),
+                    List.of(),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.BUY,
+                    1,
+                    new BigDecimal("1000.00"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            assertDoesNotThrow(() -> orderLogic.placeOrder(placeOrderRequest));
+        }
+
+        @Test
+        @DisplayName("accept buy when cost < balance")
+        void acceptBuyWhenCostLessThanBalance() {
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            Instrument instrument = new Instrument(
+                    1,
+                    "RELIANCE.NS",
+                    "Reliance Industries",
+                    InstrumentAssetClass.EQUITY,
+                    InstrumentStatus.TRADING
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(instrument),
+                    List.of(),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.BUY,
+                    1,
+                    new BigDecimal("999.00"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            assertDoesNotThrow(() -> orderLogic.placeOrder(placeOrderRequest));
+        }
+    }
+
 //    @Nested
 //    @DisplayName("Rule 7: On a SELL, Quantity to be Sold <= Quantity in Holdings")
 //    class SellValidity {
