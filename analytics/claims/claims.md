@@ -14,9 +14,9 @@ way.
 
 | # | Claim | Chart artefact |
 |---|---|---|
-| 1 | Reliance Industries (RELIANCE.NS) shares fell 17.0%, from a close of ₹1,575.60 on 1 January 2026 to ₹1,307.80 on 31 July 2026, and the chart shows this as a sustained downward drift rather than a single crash day. | charts/report.html#RELIANCE-NS-cumulative-return |
-| 2 | Infosys' (INFY.NS) 10 busiest trading days between January and July 2026 made up only 6.8% of all trading days but accounted for 20.1% of total recorded trading volume. | charts/report.html#INFY-NS-volume-concentration |
-| 3 | Apple (AAPL) closed above its opening price on 86 of 151 trading days (57%) between January and July 2026, more often than it closed below (65 days, 43%), consistent with its 14.0% net gain over the period. | charts/report.html#AAPL-positive-negative-days |
+| 1 | Reliance Industries (RELIANCE.NS) shares fell 17.0%, from a close of ₹1,575.60 on 1 January 2026 to ₹1,307.80 on 31 July 2026, and the chart shows this as a sustained downward drift rather than a single crash day. | ![Claim 1](charts\images_RELIANCE-NS\RELIANCE-NS-cumulative-return.png) |
+| 2 | Infosys' (INFY.NS) 10 busiest trading days between January and July 2026 made up only 6.8% of all trading days but accounted for 20.1% of total recorded trading volume. | ![Claim 2](charts\images_INFY-NS\INFY-NS-volume-concentration.png) |
+| 3 | Apple (AAPL) closed above its opening price on 86 of 151 trading days (57%) between January and July 2026, more often than it closed below (65 days, 43%), consistent with its 14.0% net gain over the period. |![Claim 3](charts\images_AAPL\AAPL-positive-negative-days.png) |
 
 Filled in, a row looks like this. The claim is invented and out of domain
 deliberately, so that copying it gets you nothing. It is numbered `x` rather
