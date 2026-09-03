@@ -78,6 +78,10 @@ public class OrderLogic {
             if (request.getQuantity() > availableQuantity) {
                 throw new InsufficientHoldingsException(account.getAccountId(), instrument.getInstrumentTicker(), request.getQuantity(), availableQuantity);
             }
+            
+            if (acceptedIdempotencyKeys.contains(request.getIdempotencyKey())) {
+                throw new DuplicateOrderException(request.getIdempotencyKey());
+            }
         }
     }
 }
