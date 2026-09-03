@@ -216,10 +216,10 @@ public class Account {
                     fieldName + " cannot be negative");
         }
 
-        if(value.scale() > 4) {
+        if(value.scale() > 2) {
             throw new IllegalArgumentException(
                     fieldName
-                            + " cannot have more than four decimal places");
+                            + " cannot have more than two decimal places");
         }
     }
 
