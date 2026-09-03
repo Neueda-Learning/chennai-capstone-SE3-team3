@@ -9,6 +9,7 @@ import com.enterprise.trading.domain.enums.InstrumentStatus;
 import com.enterprise.trading.domain.enums.OrderSide;
 import com.enterprise.trading.domain.exception.AccountNotActiveException;
 import com.enterprise.trading.domain.exception.AccountNotFoundException;
+import com.enterprise.trading.domain.exception.InstrumentNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -117,17 +118,9 @@ public class OrderLogicTest {
                     10
             );
 
-            Instrument instrument = new Instrument(
-                    1,
-                    "RELIANCE.NS",
-                    "Reliance Industries",
-                    InstrumentAssetClass.EQUITY,
-                    InstrumentStatus.TRADING
-            );
-
             OrderLogic orderLogic = new OrderLogic(
                     List.of(account),
-                    List.of(instrument),
+                    List.of(),
                     List.of(),
                     Set.of()
             );
@@ -164,17 +157,9 @@ public class OrderLogicTest {
                     10
             );
 
-            Instrument instrument = new Instrument(
-                    1,
-                    "RELIANCE.NS",
-                    "Reliance Industries",
-                    InstrumentAssetClass.EQUITY,
-                    InstrumentStatus.TRADING
-            );
-
             OrderLogic orderLogic = new OrderLogic(
                     List.of(account),
-                    List.of(instrument),
+                    List.of(),
                     List.of(),
                     Set.of()
             );
@@ -239,33 +224,187 @@ public class OrderLogicTest {
             assertDoesNotThrow(() -> orderLogic.placeOrder(placeOrderRequest));
         }
     }
-//
-//    @Nested
-//    @DisplayName("Rule 3: The Instrument must EXIST and be TRADABLE")
-//    class InstrumentValidity {
-//
-//        @Test
-//        @DisplayName("reject unknown instrument")
-//        void rejectUnknownInstrument() {
-//        }
-//
-//        @Test
-//        @DisplayName("reject halted instrument")
-//        void rejectHaltedInstrument() {
-//        }
-//
-//        @Test
-//        @DisplayName("reject retired instrument")
-//        void rejectRetiredInstrument() {
-//        }
-//
-//        @Test
-//        @DisplayName("accept trading instrument")
-//        void acceptTradingInstrument() {
-//        }
-//
-//    }
-//
+
+    @Nested
+    @DisplayName("Rule 3: The Instrument must EXIST and be TRADABLE")
+    class InstrumentValidity {
+
+        @Test
+        @DisplayName("reject unknown instrument")
+        void rejectUnknownInstrument() {
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(),
+                    List.of(),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.BUY,
+                    10,
+                    new BigDecimal("150.25"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            InstrumentNotFoundException exception = assertThrows(InstrumentNotFoundException.class, () -> orderLogic.placeOrder(placeOrderRequest));
+            assertEquals("INS-404", exception.getErrorCode());
+            assertEquals("RELIANCE.NS", exception.getSymbol());
+        }
+
+        @Test
+        @DisplayName("reject halted instrument")
+        void rejectHaltedInstrument() {
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            Instrument instrument = new Instrument(
+                    1,
+                    "RELIANCE.NS",
+                    "Reliance Industries",
+                    InstrumentAssetClass.EQUITY,
+                    InstrumentStatus.HALTED
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(instrument),
+                    List.of(),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.BUY,
+                    10,
+                    new BigDecimal("150.25"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            InstrumentNotFoundException exception = assertThrows(InstrumentNotFoundException.class, () -> orderLogic.placeOrder(placeOrderRequest));
+            assertEquals("INS-404", exception.getErrorCode());
+            assertEquals("RELIANCE.NS", exception.getSymbol());
+        }
+
+        @Test
+        @DisplayName("reject retired instrument")
+        void rejectRetiredInstrument() {
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            Instrument instrument = new Instrument(
+                    1,
+                    "RELIANCE.NS",
+                    "Reliance Industries",
+                    InstrumentAssetClass.EQUITY,
+                    InstrumentStatus.RETIRED
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(instrument),
+                    List.of(),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.BUY,
+                    10,
+                    new BigDecimal("150.25"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            InstrumentNotFoundException exception = assertThrows(InstrumentNotFoundException.class, () -> orderLogic.placeOrder(placeOrderRequest));
+            assertEquals("INS-404", exception.getErrorCode());
+            assertEquals("RELIANCE.NS", exception.getSymbol());
+        }
+
+        @Test
+        @DisplayName("accept trading instrument")
+        void acceptTradingInstrument() {
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            Instrument instrument = new Instrument(
+                    1,
+                    "RELIANCE.NS",
+                    "Reliance Industries",
+                    InstrumentAssetClass.EQUITY,
+                    InstrumentStatus.TRADING
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(instrument),
+                    List.of(),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.BUY,
+                    10,
+                    new BigDecimal("150.25"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            assertDoesNotThrow(() -> orderLogic.placeOrder(placeOrderRequest));
+        }
+
+    }
+
 //    @Nested
 //    @DisplayName("Rule 4: Quantity > 0")
 //    class QuantityValidity {
