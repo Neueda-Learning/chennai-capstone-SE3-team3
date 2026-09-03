@@ -8,10 +8,7 @@ import com.enterprise.trading.domain.entity.Order;
 import com.enterprise.trading.domain.enums.AccountStatus;
 import com.enterprise.trading.domain.enums.InstrumentStatus;
 import com.enterprise.trading.domain.enums.OrderSide;
-import com.enterprise.trading.domain.exception.AccountNotActiveException;
-import com.enterprise.trading.domain.exception.AccountNotFoundException;
-import com.enterprise.trading.domain.exception.InstrumentNotFoundException;
-import com.enterprise.trading.domain.exception.InsufficientFundsException;
+import com.enterprise.trading.domain.exception.*;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -68,5 +65,19 @@ public class OrderLogic {
             }
         }
 
+        if (request.getSide() == OrderSide.SELL) {
+
+            long availableQuantity = holdings.stream()
+                    .filter(holding ->
+                            holding.getAccountId() == account.getAccountId())
+                    .filter(holding ->
+                            holding.getInstrumentId() == instrument.getInstrumentId())
+                    .mapToLong(Holding::getQuantity)
+                    .sum();
+
+            if (request.getQuantity() > availableQuantity) {
+                throw new InsufficientHoldingsException(account.getAccountId(), instrument.getInstrumentTicker(), request.getQuantity(), availableQuantity);
+            }
+        }
     }
 }
