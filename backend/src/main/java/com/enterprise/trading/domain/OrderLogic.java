@@ -6,9 +6,13 @@ import com.enterprise.trading.domain.entity.Holding;
 import com.enterprise.trading.domain.entity.Instrument;
 import com.enterprise.trading.domain.entity.Order;
 import com.enterprise.trading.domain.enums.AccountStatus;
+import com.enterprise.trading.domain.enums.InstrumentStatus;
 import com.enterprise.trading.domain.exception.AccountNotActiveException;
 import com.enterprise.trading.domain.exception.AccountNotFoundException;
+import com.enterprise.trading.domain.exception.InstrumentNotFoundException;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.List;
 import java.util.Set;
 
@@ -39,5 +43,19 @@ public class OrderLogic {
         if (account.getAccountStatus() != AccountStatus.ACTIVE) {
             throw new AccountNotActiveException(account.getAccountId(), account.getAccountStatus());
         }
+
+        Instrument instrument = instruments.stream()
+                .filter(currentInstrument -> currentInstrument.getInstrumentTicker().equals(request.getSymbol()))
+                .filter(currentInstrument -> currentInstrument.getInstrumentStatus() == InstrumentStatus.TRADING)
+                .findFirst()
+                .orElseThrow(() -> new InstrumentNotFoundException(request.getSymbol()));
+
+        if (request.getQuantity() <= 0) {
+            throw new IllegalArgumentException("Quantity must be greater than 0");
+        }
+
+        
+
+
     }
 }
