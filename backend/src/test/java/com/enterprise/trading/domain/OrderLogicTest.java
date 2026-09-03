@@ -982,25 +982,119 @@ public class OrderLogicTest {
                     new BigDecimal("25.50"),
                     "IDEMPOTENCY-KEY"
             );
-
-            
         }
     }
 
-//    @Nested
-//    @DisplayName("Rule 8: Idempotency Key must not already have been used")
-//    class IdempotencyKey {
-//
-//        @Test
-//        @DisplayName("reject already accepted idempotency key")
-//        void rejectAlreadyAcceptedIdempotencyKey() {
-//        }
-//
-//        @Test
-//        @DisplayName("accept unused idempotency key")
-//        void acceptUnusedIdempotencyKey() {
-//        }
-//    }
+    @Nested
+    @DisplayName("Rule 8: Idempotency Key must not already have been used")
+    class IdempotencyKey {
+
+        @Test
+        @DisplayName("reject already accepted idempotency key")
+        void rejectAlreadyAcceptedIdempotencyKey() {
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            Instrument instrument = new Instrument(
+                    1,
+                    "RELIANCE.NS",
+                    "Reliance Industries",
+                    InstrumentAssetClass.EQUITY,
+                    InstrumentStatus.TRADING
+            );
+
+            Holding holding = new Holding(
+                    1L,
+                    100L,
+                    new BigDecimal("25.50"),
+                    1,
+                    1
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(instrument),
+                    List.of(holding),
+                    Set.of("IDEMPOTENCY-KEY")
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.SELL,
+                    20,
+                    new BigDecimal("25.50"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            DuplicateOrderException exception = assertThrows(DuplicateOrderException.class, () -> orderLogic.placeOrder(placeOrderRequest));
+            assertEquals("ORD-409", exception.getErrorCode());
+            assertEquals("IDEMPOTENCY-KEY", exception.getIdempotencyKey());
+        }
+
+        @Test
+        @DisplayName("accept unused idempotency key")
+        void acceptUnusedIdempotencyKey() {
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            Instrument instrument = new Instrument(
+                    1,
+                    "RELIANCE.NS",
+                    "Reliance Industries",
+                    InstrumentAssetClass.EQUITY,
+                    InstrumentStatus.TRADING
+            );
+
+            Holding holding = new Holding(
+                    1L,
+                    100L,
+                    new BigDecimal("25.50"),
+                    1,
+                    1
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(instrument),
+                    List.of(holding),
+                    Set.of("IDEMPOTENCY-KEY2")
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.SELL,
+                    20,
+                    new BigDecimal("25.50"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            assertDoesNotThrow(() -> orderLogic.placeOrder(placeOrderRequest));
+        }
+    }
 //
 //    @Nested
 //    @DisplayName("evaluation order")
