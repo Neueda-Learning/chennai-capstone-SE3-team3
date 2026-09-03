@@ -68,10 +68,8 @@ public class OrderLogic {
         if (request.getSide() == OrderSide.SELL) {
 
             long availableQuantity = holdings.stream()
-                    .filter(holding ->
-                            holding.getAccountId() == account.getAccountId())
-                    .filter(holding ->
-                            holding.getInstrumentId() == instrument.getInstrumentId())
+                    .filter(holding -> holding.getAccountId() == account.getAccountId())
+                    .filter(holding -> holding.getInstrumentId() == instrument.getInstrumentId())
                     .mapToLong(Holding::getQuantity)
                     .sum();
 
