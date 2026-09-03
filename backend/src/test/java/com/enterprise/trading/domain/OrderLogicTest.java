@@ -1095,44 +1095,310 @@ public class OrderLogicTest {
             assertDoesNotThrow(() -> orderLogic.placeOrder(placeOrderRequest));
         }
     }
-//
-//    @Nested
-//    @DisplayName("evaluation order")
-//    class EvaluationOrder {
-//
-//        @Test
-//        @DisplayName("account existence fails before account status")
-//        void accountExistenceFailsFirst() {
-//        }
-//
-//        @Test
-//        @DisplayName("account status fails before instrument validation")
-//        void accountStatusFailsBeforeInstrumentValidation() {
-//        }
-//
-//        @Test
-//        @DisplayName("instrument validation fails before quantity validation")
-//        void instrumentValidationFailsBeforeQuantityValidation() {
-//        }
-//
-//        @Test
-//        @DisplayName("quantity validation fails before price validation")
-//        void quantityFailsBeforePrice() {
-//        }
-//
-//        @Test
-//        @DisplayName("price validation fails before BUY validation")
-//        void priceValidationFailsBeforeBuyValidation() {
-//        }
-//
-//        @Test
-//        @DisplayName("INSUFFICIENT FUNDS fail before INSUFFICIENT HOLDINGS")
-//        void insufficientFundsFailBeforeInsufficientHoldings() {
-//        }
-//
-//        @Test
-//        @DisplayName("INSUFFICIENT HOLDINGS fail before IDEMPOTENCY check")
-//        void insufficientHoldingsFailBeforeIdempotencyKey() {
-//        }
-//    }
+
+    @Nested
+    @DisplayName("evaluation order")
+    class EvaluationOrder {
+
+        @Test
+        @DisplayName("account existence fails before account status")
+        void accountExistenceFailsFirst() {
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.BUY,
+                    1,
+                    new BigDecimal("150.25"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            AccountNotFoundException exception = assertThrows(AccountNotFoundException.class, () -> orderLogic.placeOrder(placeOrderRequest));
+
+            assertEquals("ACC-404", exception.getErrorCode());
+        }
+
+        @Test
+        @DisplayName("account status fails before instrument validation")
+        void accountStatusFailsBeforeInstrumentValidation() {
+
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.SUSPENDED,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(),
+                    List.of(),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.BUY,
+                    1,
+                    new BigDecimal("150.25"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            AccountNotActiveException exception = assertThrows(AccountNotActiveException.class, () -> orderLogic.placeOrder(placeOrderRequest));
+
+            assertEquals("ACC-403", exception.getErrorCode());
+        }
+
+        @Test
+        @DisplayName("instrument validation fails before quantity validation")
+        void instrumentValidationFailsBeforeQuantityValidation() {
+
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(),
+                    List.of(),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "UNKNOWN.NS",
+                    OrderSide.BUY,
+                    1,
+                    new BigDecimal("150.25"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            InstrumentNotFoundException exception = assertThrows(InstrumentNotFoundException.class, () -> orderLogic.placeOrder(placeOrderRequest));
+
+            assertEquals("INS-404", exception.getErrorCode());
+            assertEquals("UNKNOWN.NS", exception.getSymbol());
+        }
+
+        @Test
+        @DisplayName("quantity validation fails before price validation")
+        void quantityFailsBeforePrice() {
+
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            Instrument instrument = new Instrument(
+                    1,
+                    "RELIANCE.NS",
+                    "Reliance Industries",
+                    InstrumentAssetClass.EQUITY,
+                    InstrumentStatus.TRADING
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(instrument),
+                    List.of(),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.BUY,
+                    1,
+                    new BigDecimal("150.25"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            assertDoesNotThrow(() -> orderLogic.placeOrder(placeOrderRequest));
+        }
+
+        @Test
+        @DisplayName("price validation fails before BUY validation")
+        void priceValidationFailsBeforeBuyValidation() {
+
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("100.00"),
+                    new BigDecimal("100.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            Instrument instrument = new Instrument(
+                    1,
+                    "RELIANCE.NS",
+                    "Reliance Industries",
+                    InstrumentAssetClass.EQUITY,
+                    InstrumentStatus.TRADING
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(instrument),
+                    List.of(),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.BUY,
+                    1,
+                    new BigDecimal("100.00"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            assertDoesNotThrow(() -> orderLogic.placeOrder(placeOrderRequest));
+        }
+
+        @Test
+        @DisplayName("INSUFFICIENT FUNDS fail before later validation")
+        void insufficientFundsFailBeforeInsufficientHoldings() {
+
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("100.00"),
+                    new BigDecimal("100.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            Instrument instrument = new Instrument(
+                    1,
+                    "RELIANCE.NS",
+                    "Reliance Industries",
+                    InstrumentAssetClass.EQUITY,
+                    InstrumentStatus.TRADING
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(instrument),
+                    List.of(),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.BUY,
+                    1,
+                    new BigDecimal("150.25"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            InsufficientFundsException exception = assertThrows(InsufficientFundsException.class, () -> orderLogic.placeOrder(placeOrderRequest));
+
+            assertEquals("ORD-400", exception.getErrorCode());
+            assertEquals(1L, exception.getAccountId());
+        }
+
+        @Test
+        @DisplayName("INSUFFICIENT HOLDINGS fail before IDEMPOTENCY check")
+        void insufficientHoldingsFailBeforeIdempotencyKey() {
+
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            Instrument instrument = new Instrument(
+                    1,
+                    "RELIANCE.NS",
+                    "Reliance Industries",
+                    InstrumentAssetClass.EQUITY,
+                    InstrumentStatus.TRADING
+            );
+
+            Holding holding = new Holding(
+                    1L,
+                    1L,
+                    new BigDecimal("25.50"),
+                    1,
+                    1
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(instrument),
+                    List.of(holding),
+                    Set.of("IDEMPOTENCY-KEY")
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.SELL,
+                    20,
+                    new BigDecimal("25.50"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            InsufficientHoldingsException exception = assertThrows(InsufficientHoldingsException.class, () -> orderLogic.placeOrder(placeOrderRequest));
+
+            assertEquals("ORD-409", exception.getErrorCode());
+            assertEquals(1L, exception.getAccountId());
+            assertEquals("RELIANCE.NS", exception.getSymbol());
+            assertEquals(20L, exception.getRequestedQuantity());
+            assertEquals(1L, exception.getAvailableQuantity());
+        }
+    }
 }
