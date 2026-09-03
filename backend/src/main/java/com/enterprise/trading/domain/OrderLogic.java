@@ -54,7 +54,9 @@ public class OrderLogic {
             throw new IllegalArgumentException("Quantity must be greater than 0");
         }
 
-        
+        if (request.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Price must be greater than 0");
+        }
 
 
     }
