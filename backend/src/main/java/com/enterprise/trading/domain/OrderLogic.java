@@ -5,6 +5,8 @@ import com.enterprise.trading.domain.entity.Account;
 import com.enterprise.trading.domain.entity.Holding;
 import com.enterprise.trading.domain.entity.Instrument;
 import com.enterprise.trading.domain.entity.Order;
+import com.enterprise.trading.domain.enums.AccountStatus;
+import com.enterprise.trading.domain.exception.AccountNotActiveException;
 import com.enterprise.trading.domain.exception.AccountNotFoundException;
 
 import java.util.List;
@@ -33,5 +35,9 @@ public class OrderLogic {
                 .filter(currentAccount -> currentAccount.getAccountId() == request.getAccountId())
                 .findFirst()
                 .orElseThrow(() -> new AccountNotFoundException(request.getAccountId()));
+
+        if (account.getAccountStatus() != AccountStatus.ACTIVE) {
+            throw new AccountNotActiveException(account.getAccountId(), account.getAccountStatus());
+        }
     }
 }
