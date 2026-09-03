@@ -405,26 +405,144 @@ public class OrderLogicTest {
 
     }
 
-//    @Nested
-//    @DisplayName("Rule 4: Quantity > 0")
-//    class QuantityValidity {
-//
-//        @Test
-//        @DisplayName("reject 0 quantity")
-//        void rejectZeroQuantity() {
-//        }
-//
-//        @Test
-//        @DisplayName("reject negative quantity")
-//        void rejectNegativeQuantity() {
-//        }
-//
-//        @Test
-//        @DisplayName("accept positive quantity")
-//        void acceptPositiveQuantity() {
-//        }
-//    }
-//
+    @Nested
+    @DisplayName("Rule 4: Quantity > 0")
+    class QuantityValidity {
+
+        @Test
+        @DisplayName("reject 0 quantity")
+        void rejectZeroQuantity() {
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            Instrument instrument = new Instrument(
+                    1,
+                    "RELIANCE.NS",
+                    "Reliance Industries",
+                    InstrumentAssetClass.EQUITY,
+                    InstrumentStatus.TRADING
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(instrument),
+                    List.of(),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.BUY,
+                    0,
+                    new BigDecimal("150.25"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            assertThrows(IllegalArgumentException.class, () -> orderLogic.placeOrder(placeOrderRequest));
+        }
+
+        @Test
+        @DisplayName("reject negative quantity")
+        void rejectNegativeQuantity() {
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            Instrument instrument = new Instrument(
+                    1,
+                    "RELIANCE.NS",
+                    "Reliance Industries",
+                    InstrumentAssetClass.EQUITY,
+                    InstrumentStatus.TRADING
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(instrument),
+                    List.of(),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.BUY,
+                    -1,
+                    new BigDecimal("150.25"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            assertThrows(IllegalArgumentException.class, () -> orderLogic.placeOrder(placeOrderRequest));
+        }
+
+        @Test
+        @DisplayName("accept positive quantity")
+        void acceptPositiveQuantity() {
+
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            Instrument instrument = new Instrument(
+                    1,
+                    "RELIANCE.NS",
+                    "Reliance Industries",
+                    InstrumentAssetClass.EQUITY,
+                    InstrumentStatus.TRADING
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(instrument),
+                    List.of(),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.BUY,
+                    1,
+                    new BigDecimal("150.25"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            assertDoesNotThrow(() -> orderLogic.placeOrder(placeOrderRequest));
+        }
+    }
+
 //    @Nested
 //    @DisplayName("Rule 5: Price > 0")
 //    class PriceValidity {
