@@ -2,15 +2,13 @@ package com.enterprise.trading.domain;
 
 import com.enterprise.trading.domain.dto.PlaceOrderRequest;
 import com.enterprise.trading.domain.entity.Account;
+import com.enterprise.trading.domain.entity.Holding;
 import com.enterprise.trading.domain.entity.Instrument;
 import com.enterprise.trading.domain.enums.AccountStatus;
 import com.enterprise.trading.domain.enums.InstrumentAssetClass;
 import com.enterprise.trading.domain.enums.InstrumentStatus;
 import com.enterprise.trading.domain.enums.OrderSide;
-import com.enterprise.trading.domain.exception.AccountNotActiveException;
-import com.enterprise.trading.domain.exception.AccountNotFoundException;
-import com.enterprise.trading.domain.exception.InstrumentNotFoundException;
-import com.enterprise.trading.domain.exception.InsufficientFundsException;
+import com.enterprise.trading.domain.exception.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -732,7 +730,6 @@ public class OrderLogicTest {
             assertEquals(1L, exception.getAccountId());
             assertEquals(new BigDecimal("1100.00"), exception.getRequired());
             assertEquals(new BigDecimal("1000.00"), exception.getAvailable());
-
         }
 
         @Test
@@ -824,26 +821,172 @@ public class OrderLogicTest {
         }
     }
 
-//    @Nested
-//    @DisplayName("Rule 7: On a SELL, Quantity to be Sold <= Quantity in Holdings")
-//    class SellValidity {
-//
-//        @Test
-//        @DisplayName("reject sell when quantity > holdings")
-//        void rejectSellWhenQuantityGreaterThanHoldings() {
-//        }
-//
-//        @Test
-//        @DisplayName("accept sell when quantity = holdings")
-//        void acceptSellWhenQuantityEqualToHoldings() {
-//        }
-//
-//        @Test
-//        @DisplayName("accept sell when quantity < holdings")
-//        void acceptSellWhenQuantityLessThanHoldings() {
-//        }
-//    }
-//
+    @Nested
+    @DisplayName("Rule 7: On a SELL, Quantity to be Sold <= Quantity in Holdings")
+    class SellValidity {
+
+        @Test
+        @DisplayName("reject sell when quantity > holdings")
+        void rejectSellWhenQuantityGreaterThanHoldings() {
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            Instrument instrument = new Instrument(
+                    1,
+                    "RELIANCE.NS",
+                    "Reliance Industries",
+                    InstrumentAssetClass.EQUITY,
+                    InstrumentStatus.TRADING
+            );
+
+            Holding holding = new Holding(
+                    1L,
+                    1L,
+                    new BigDecimal("25.50"),
+                    1,
+                    1
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(instrument),
+                    List.of(holding),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.SELL,
+                    20,
+                    new BigDecimal("25.50"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            InsufficientHoldingsException exception = assertThrows(InsufficientHoldingsException.class, () -> orderLogic.placeOrder(placeOrderRequest));
+            assertEquals("ORD-409", exception.getErrorCode());
+            assertEquals(1L, exception.getAccountId());
+            assertEquals("RELIANCE.NS", exception.getSymbol());
+            assertEquals(20L, exception.getRequestedQuantity());
+            assertEquals(1L, exception.getAvailableQuantity());
+        }
+
+        @Test
+        @DisplayName("accept sell when quantity = holdings")
+        void acceptSellWhenQuantityEqualToHoldings() {
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            Instrument instrument = new Instrument(
+                    1,
+                    "RELIANCE.NS",
+                    "Reliance Industries",
+                    InstrumentAssetClass.EQUITY,
+                    InstrumentStatus.TRADING
+            );
+
+            Holding holding = new Holding(
+                    1L,
+                    1L,
+                    new BigDecimal("25.50"),
+                    1,
+                    1
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(instrument),
+                    List.of(holding),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.SELL,
+                    1,
+                    new BigDecimal("25.50"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            assertDoesNotThrow(() -> orderLogic.placeOrder(placeOrderRequest));
+        }
+
+        @Test
+        @DisplayName("accept sell when quantity < holdings")
+        void acceptSellWhenQuantityLessThanHoldings() {
+            Account account = new Account(
+                    1,
+                    "ETP000000001",
+                    LocalDate.of(2026, 9, 2),
+                    new BigDecimal("1000.00"),
+                    new BigDecimal("1000.00"),
+                    AccountStatus.ACTIVE,
+                    "INR",
+                    1L,
+                    null,
+                    null,
+                    10
+            );
+
+            Instrument instrument = new Instrument(
+                    1,
+                    "RELIANCE.NS",
+                    "Reliance Industries",
+                    InstrumentAssetClass.EQUITY,
+                    InstrumentStatus.TRADING
+            );
+
+            Holding holding = new Holding(
+                    1L,
+                    100L,
+                    new BigDecimal("25.50"),
+                    1,
+                    1
+            );
+
+            OrderLogic orderLogic = new OrderLogic(
+                    List.of(account),
+                    List.of(instrument),
+                    List.of(holding),
+                    Set.of()
+            );
+
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest(
+                    1L,
+                    "RELIANCE.NS",
+                    OrderSide.SELL,
+                    20,
+                    new BigDecimal("25.50"),
+                    "IDEMPOTENCY-KEY"
+            );
+
+            
+        }
+    }
+
 //    @Nested
 //    @DisplayName("Rule 8: Idempotency Key must not already have been used")
 //    class IdempotencyKey {
