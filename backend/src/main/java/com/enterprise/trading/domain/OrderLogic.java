@@ -7,9 +7,11 @@ import com.enterprise.trading.domain.entity.Instrument;
 import com.enterprise.trading.domain.entity.Order;
 import com.enterprise.trading.domain.enums.AccountStatus;
 import com.enterprise.trading.domain.enums.InstrumentStatus;
+import com.enterprise.trading.domain.enums.OrderSide;
 import com.enterprise.trading.domain.exception.AccountNotActiveException;
 import com.enterprise.trading.domain.exception.AccountNotFoundException;
 import com.enterprise.trading.domain.exception.InstrumentNotFoundException;
+import com.enterprise.trading.domain.exception.InsufficientFundsException;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -58,6 +60,13 @@ public class OrderLogic {
             throw new IllegalArgumentException("Price must be greater than 0");
         }
 
+        if (request.getSide() == OrderSide.BUY) {
+            BigDecimal requiredAmount = request.getPrice().multiply(BigDecimal.valueOf(request.getQuantity()));
+            BigDecimal availableBalance = account.getBalance();
+            if (requiredAmount.compareTo(availableBalance) > 0) {
+                throw new InsufficientFundsException(account.getAccountId(), requiredAmount, availableBalance);
+            }
+        }
 
     }
 }
