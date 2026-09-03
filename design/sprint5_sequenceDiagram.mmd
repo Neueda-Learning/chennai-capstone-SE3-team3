@@ -65,7 +65,7 @@ sequenceDiagram
 
             else Order validation successful
 
-                Order->>Order: Set orderStatus = RECEIVED
+                Order->>Order: Set orderStatus = NEW
 
                 Order->>Instrument: Check instrumentStatus
 

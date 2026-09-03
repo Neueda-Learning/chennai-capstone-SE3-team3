@@ -29,17 +29,17 @@ public class OrderTest {
     }
 
     @Test
-    @DisplayName("newly received order has RECEIVED status")
-    void newlyReceivedOrderHasRECEIVEDSTATUS() {
-        Order order = createOrder(OrderStatus.RECEIVED);
+    @DisplayName("newly received order has NEW status")
+    void newlyReceivedOrderHasNEWSTATUS() {
+        Order order = createOrder(OrderStatus.NEW);
 
-        assertEquals(OrderStatus.RECEIVED, order.getOrderStatus());
+        assertEquals(OrderStatus.NEW, order.getOrderStatus());
     }
 
     @Test
     @DisplayName("received order can be filled")
     void receivedOrderCanBeFilled() {
-        Order order = createOrder(OrderStatus.RECEIVED);
+        Order order = createOrder(OrderStatus.NEW);
         order.fill();
         assertEquals(OrderStatus.FILLED, order.getOrderStatus());
     }
@@ -47,7 +47,7 @@ public class OrderTest {
     @Test
     @DisplayName("received order can be rejected")
     void receivedOrderCanBeRejected() {
-        Order order = createOrder(OrderStatus.RECEIVED);
+        Order order = createOrder(OrderStatus.NEW);
         order.reject();
         assertEquals(OrderStatus.REJECTED, order.getOrderStatus());
     }
@@ -55,7 +55,7 @@ public class OrderTest {
     @Test
     @DisplayName("received order can be cancelled")
     void receivedOrderCanBeCancelled() {
-        Order order = createOrder(OrderStatus.RECEIVED);
+        Order order = createOrder(OrderStatus.NEW);
         order.cancel();
         assertEquals(OrderStatus.CANCELLED, order.getOrderStatus());
     }

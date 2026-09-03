@@ -134,7 +134,7 @@ public class Order {
 
     public void fill() {
 
-        if (orderStatus != OrderStatus.RECEIVED) {
+        if (orderStatus != OrderStatus.NEW) {
             throw new IllegalStateException(
                     "Only a received order can be filled");
         }
@@ -148,7 +148,7 @@ public class Order {
 
     public void reject() {
 
-        if (orderStatus != OrderStatus.RECEIVED) {
+        if (orderStatus != OrderStatus.NEW) {
             throw new IllegalStateException(
                     "Only a received order can be rejected");
         }
@@ -162,7 +162,7 @@ public class Order {
 
     public void cancel() {
 
-        if (orderStatus != OrderStatus.RECEIVED) {
+        if (orderStatus != OrderStatus.NEW) {
             throw new IllegalStateException(
                     "Only a received order can be cancelled");
         }

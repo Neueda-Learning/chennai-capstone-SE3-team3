@@ -1,7 +1,7 @@
 package com.enterprise.trading.domain.enums;
 
 public enum OrderStatus {
-    RECEIVED,
+    NEW,
     FILLED,
     REJECTED,
     CANCELLED
