@@ -26,16 +26,16 @@
     -->
     <resultMap id="OrderResultMap" type="org.example.backend.entities.Order">
         <constructor>
-            <idArg column="order_id" javaType="long" name="orderId"/>
+            <idArg column="order_id" javaType="_long" name="orderId"/>
             <arg column="idempotency_key" javaType="String" name="idempotencyKey"/>
             <arg column="order_status" javaType="org.example.backend.enums.OrderStatus" name="orderStatus"/>
             <arg column="received_at" javaType="java.time.OffsetDateTime" name="receivedAt"/>
             <arg column="order_type" javaType="org.example.backend.enums.OrderSide" name="orderSide"/>
             <arg column="price" javaType="java.math.BigDecimal" name="price"/>
-            <arg column="quantity" javaType="long" name="quantity"/>
+            <arg column="quantity" javaType="_long" name="quantity"/>
             <arg column="transaction_date" javaType="java.time.OffsetDateTime" name="transactionDate"/>
-            <arg column="account_id" javaType="int" name="accountId"/>
-            <arg column="instrument_id" javaType="int" name="instrumentId"/>
+            <arg column="account_id" javaType="_int" name="accountId"/>
+            <arg column="instrument_id" javaType="_int" name="instrumentId"/>
         </constructor>
     </resultMap>
 
@@ -334,5 +334,129 @@
             resultType="long">
         SELECT COUNT(*) FROM orders WHERE order_status = #{orderStatus}
     </select>
+
+    <!-- ===================================================
+     Story 6 - Order History
+     =================================================== -->
+
+    <resultMap id="OrderHistoryEntryMap"
+               type="org.example.backend.dto.OrderHistoryEntry">
+        <constructor>
+            <idArg column="order_id"
+                   javaType="java.lang.String"/>
+
+            <arg column="account_id"
+                 javaType="java.lang.Long"/>
+
+            <arg column="instrument_ticker"
+                 javaType="java.lang.String"/>
+
+            <arg column="order_type"
+                 javaType="org.example.backend.enums.OrderSide"/>
+
+            <arg column="quantity"
+                 javaType="java.lang.Integer"/>
+
+            <arg column="price"
+                 javaType="java.math.BigDecimal"/>
+
+            <arg column="executed_price"
+                 javaType="java.math.BigDecimal"/>
+
+            <arg column="order_status"
+                 javaType="org.example.backend.enums.OrderStatus"/>
+
+            <arg column="idempotency_key"
+                 javaType="java.lang.String"/>
+
+            <arg column="received_at"
+                 javaType="java.time.OffsetDateTime"/>
+        </constructor>
+    </resultMap>
+
+    <select id="selectOrderHistoryByAccountId"
+            resultMap="OrderHistoryEntryMap">
+
+        SELECT
+        CAST(o.order_id AS VARCHAR) AS order_id,
+        o.account_id,
+        i.instrument_ticker,
+        o.order_type,
+        CAST(o.quantity AS INTEGER) AS quantity,
+        o.price,
+
+        /*
+        * Current DB has no executed_price column.
+        * Since Sprint 5 fills synchronously at the submitted price,
+        * use price for FILLED orders and NULL otherwise.
+        */
+        CASE
+        WHEN o.order_status = 'FILLED'
+        THEN o.price
+        ELSE NULL
+        END AS executed_price,
+
+        o.order_status,
+        o.idempotency_key,
+        o.received_at
+
+        FROM orders o
+
+        JOIN instrument i
+        ON i.instrument_id = o.instrument_id
+
+        WHERE o.account_id = #{accountId}
+
+        <if test="status != null">
+            AND o.order_status = #{status}
+        </if>
+
+        <if test="from != null">
+            AND o.received_at &gt;= #{from}
+        </if>
+
+        <if test="to != null">
+            AND o.received_at &lt;= #{to}
+        </if>
+
+        ORDER BY
+        o.received_at DESC,
+        o.order_id DESC
+
+    </select>
+
+    <!-- ===================================================
+         Story 5 - Generate Order ID
+         =================================================== -->
+
+    <select id="nextOrderId"
+            resultType="long">
+
+        SELECT nextval(
+                       pg_get_serial_sequence(
+                               'orders',
+                               'order_id'
+                       )
+               )
+
+    </select>
+
+    <!-- ===================================================
+         Story 5 - Conditional Cancellation
+         =================================================== -->
+
+    <update id="cancelOrder">
+
+        UPDATE orders
+
+        SET
+            order_status = 'CANCELLED',
+            transaction_date = CURRENT_TIMESTAMP
+
+        WHERE order_id = #{orderId}
+          AND account_id = #{accountId}
+          AND order_status = 'NEW'
+
+    </update>
 
 </mapper>

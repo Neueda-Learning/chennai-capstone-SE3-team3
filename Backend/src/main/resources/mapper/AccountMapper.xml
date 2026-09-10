@@ -21,17 +21,17 @@
     -->
     <resultMap id="AccountResultMap" type="org.example.backend.entities.Account">
         <constructor>
-            <idArg column="account_id" javaType="int" name="accountId"/>
+            <idArg column="account_id" javaType="_int" name="accountId"/>
             <arg column="account_number" javaType="String" name="accountNumber"/>
             <arg column="opening_date" javaType="java.time.LocalDate" name="openingDate"/>
             <arg column="balance" javaType="java.math.BigDecimal" name="balance"/>
             <arg column="purchasing_power" javaType="java.math.BigDecimal" name="purchasingPower"/>
             <arg column="account_status" javaType="org.example.backend.enums.AccountStatus" name="accountStatus"/>
             <arg column="currency" javaType="String" name="currency"/>
-            <arg column="version" javaType="long" name="version"/>
+            <arg column="version" javaType="_long" name="version"/>
             <arg column="suspended_at" javaType="java.time.OffsetDateTime" name="suspendedAt"/>
             <arg column="closed_at" javaType="java.time.OffsetDateTime" name="closedAt"/>
-            <arg column="client_id" javaType="int" name="clientId"/>
+            <arg column="client_id" javaType="_int" name="clientId"/>
         </constructor>
     </resultMap>
 
@@ -288,5 +288,104 @@
         FROM account
         WHERE account_number = #{accountNumber}
     </select>
+
+    <!-- ===================================================
+     Story 6 - Account Read Response
+     =================================================== -->
+
+    <resultMap id="AccountResponseMap"
+               type="org.example.backend.dto.AccountResponse">
+        <constructor>
+            <idArg column="account_id"
+                   javaType="java.lang.Long"/>
+            <arg column="account_number"
+                 javaType="java.lang.String"/>
+            <arg column="holder_name"
+                 javaType="java.lang.String"/>
+            <arg column="balance"
+                 javaType="java.math.BigDecimal"/>
+            <arg column="account_status"
+                 javaType="org.example.backend.enums.AccountStatus"/>
+            <arg column="version"
+                 javaType="java.lang.Integer"/>
+            <arg column="last_updated"
+                 javaType="java.time.OffsetDateTime"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="BalanceResponseMap"
+               type="org.example.backend.dto.BalanceResponse">
+        <constructor>
+            <idArg column="account_id"
+                   javaType="java.lang.Long"/>
+            <arg column="balance"
+                 javaType="java.math.BigDecimal"/>
+            <arg column="currency"
+                 javaType="java.lang.String"/>
+            <arg column="as_of"
+                 javaType="java.time.OffsetDateTime"/>
+        </constructor>
+    </resultMap>
+
+    <select id="selectAccountResponseById"
+            resultMap="AccountResponseMap">
+
+        SELECT
+            a.account_id,
+            a.account_number,
+            c.client_name AS holder_name,
+            a.balance,
+            a.account_status,
+            a.version,
+
+            /*
+             * The current account table does not have a
+             * last_updated column.
+             *
+             * Do NOT pretend this is a true last-update timestamp.
+             * CURRENT_TIMESTAMP represents read time.
+             */
+            CURRENT_TIMESTAMP AS last_updated
+
+        FROM account a
+                 JOIN client c
+                      ON c.client_id = a.client_id
+
+        WHERE a.account_id = #{accountId}
+
+    </select>
+
+    <select id="selectBalanceResponseByAccountId"
+            resultMap="BalanceResponseMap">
+
+        SELECT
+            a.account_id,
+            a.balance,
+            a.currency,
+            CURRENT_TIMESTAMP AS as_of
+
+        FROM account a
+
+        WHERE a.account_id = #{accountId}
+
+    </select>
+
+    <!-- ===================================================
+         Story 5 - Optimistic Locking
+         =================================================== -->
+
+    <update id="updateAccountBalanceWithVersion">
+
+        UPDATE account
+
+        SET
+            balance = #{newBalance},
+            purchasing_power = #{newBalance},
+            version = version + 1
+
+        WHERE account_id = #{accountId}
+          AND version = #{expectedVersion}
+
+    </update>
 
 </mapper>

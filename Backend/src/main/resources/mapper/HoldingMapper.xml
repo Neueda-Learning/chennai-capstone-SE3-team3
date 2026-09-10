@@ -20,11 +20,11 @@
     -->
     <resultMap id="HoldingResultMap" type="org.example.backend.entities.Holding">
         <constructor>
-            <idArg column="holding_id" javaType="long" name="holdingId"/>
-            <arg column="quantity" javaType="long" name="quantity"/>
+            <idArg column="holding_id" javaType="_long" name="holdingId"/>
+            <arg column="quantity" javaType="_long" name="quantity"/>
             <arg column="purchase_price" javaType="java.math.BigDecimal" name="purchasePrice"/>
-            <arg column="account_id" javaType="int" name="accountId"/>
-            <arg column="instrument_id" javaType="int" name="instrumentId"/>
+            <arg column="account_id" javaType="_int" name="accountId"/>
+            <arg column="instrument_id" javaType="_int" name="instrumentId"/>
         </constructor>
     </resultMap>
 
@@ -223,6 +223,61 @@
         FROM holdings
         WHERE account_id = #{accountId}
           AND instrument_id = #{instrumentId}
+    </select>
+
+    <!-- ===================================================
+     Story 6 - Position Response
+     =================================================== -->
+
+    <resultMap id="PositionResponseMap"
+               type="org.example.backend.dto.PositionResponse">
+        <constructor>
+            <idArg column="account_id"
+                   javaType="java.lang.Long"/>
+            <arg column="instrument_ticker"
+                 javaType="java.lang.String"/>
+            <arg column="quantity"
+                 javaType="java.lang.Integer"/>
+            <arg column="purchase_price"
+                 javaType="java.math.BigDecimal"/>
+        </constructor>
+    </resultMap>
+
+    <select id="selectPositionResponsesByAccountId"
+            resultMap="PositionResponseMap">
+
+        SELECT
+        h.account_id,
+        i.instrument_ticker,
+        CAST(h.quantity AS INTEGER) AS quantity,
+        h.purchase_price
+
+        FROM holdings h
+
+        JOIN instrument i
+        ON i.instrument_id = h.instrument_id
+
+        WHERE h.account_id = #{accountId}
+        AND h.quantity != 0
+
+        ORDER BY i.instrument_ticker
+
+    </select>
+
+    <!-- ===================================================
+         Story 5 - Generate Holding ID
+         =================================================== -->
+
+    <select id="nextHoldingId"
+            resultType="long">
+
+        SELECT nextval(
+                       pg_get_serial_sequence(
+                               'holdings',
+                               'holding_id'
+                       )
+               )
+
     </select>
 
 </mapper>
