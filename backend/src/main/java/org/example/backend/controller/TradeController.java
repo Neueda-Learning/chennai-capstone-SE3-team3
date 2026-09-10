@@ -13,7 +13,7 @@ import org.example.backend.enums.AccountStatus;
 import org.example.backend.enums.OrderStatus;
 import org.example.backend.exceptions.AccountNotActiveException;
 import org.example.backend.security.AuthContext;
-import org.example.backend.service.dummyservice;
+import org.example.backend.service.TradeService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -27,82 +27,161 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1")
 @Validated
 public class TradeController {
 
-    private final dummyservice tradeService;
+    private final TradeService tradeService;
 
-    public TradeController(dummyservice tradeService) {
+    public TradeController(TradeService tradeService) {
         this.tradeService = tradeService;
     }
+
+    // =========================================================
+    // STORY 5 - PLACE ORDER
+    // =========================================================
 
     @PostMapping("/orders")
     public OrderResponse placeOrder(
             @Valid @RequestBody PlaceOrderRequest request,
             HttpServletRequest httpServletRequest) {
 
-        long authenticatedAccountId = AuthContext.requiredAccountId(httpServletRequest);
+        long authenticatedAccountId =
+                AuthContext.requiredAccountId(httpServletRequest);
+
         if (authenticatedAccountId != request.accountId()) {
-            throw new AccountNotActiveException(request.accountId(), AccountStatus.ACTIVE);
+            throw new AccountNotActiveException(
+                    request.accountId(),
+                    AccountStatus.ACTIVE);
         }
-        return tradeService.placeOrder(request);
+
+        return tradeService.placeOrder(
+                request.accountId(),
+                request.symbol(),
+                request.side(),
+                request.quantity(),
+                request.price(),
+                request.idempotencyKey());
     }
 
+    // =========================================================
+    // STORY 5 - CANCEL ORDER
+    // =========================================================
+
+    /*
+     * Keep the ID type aligned with the current database/entity
+     * until the UUID vs BIGINT mismatch is resolved.
+     */
     @DeleteMapping("/orders/{id}")
     public OrderResponse cancelOrder(
-            @PathVariable UUID id,
+            @PathVariable("id") long orderId,
             HttpServletRequest httpServletRequest) {
-        long authenticatedAccountId = AuthContext.requiredAccountId(httpServletRequest);
-        return tradeService.cancelOrder(id, authenticatedAccountId);
+
+        long authenticatedAccountId =
+                AuthContext.requiredAccountId(httpServletRequest);
+
+        return tradeService.cancelOrder(
+                orderId,
+                authenticatedAccountId);
     }
+
+    // =========================================================
+    // STORY 6 - ACCOUNT
+    // =========================================================
 
     @GetMapping("/accounts/{id}")
     public AccountResponse getAccount(
-            @PathVariable("id") @Min(1) long accountId,
-            HttpServletRequest httpServletRequest) {
+            @PathVariable("id")
+            @Min(1)
+            long accountId,
+            HttpServletRequest request) {
 
-        assertAccess(accountId, httpServletRequest);
+        assertAccess(accountId, request);
+
         return tradeService.getAccount(accountId);
     }
 
+    // =========================================================
+    // STORY 6 - BALANCE
+    // =========================================================
+
     @GetMapping("/accounts/{id}/balance")
     public BalanceResponse getBalance(
-            @PathVariable("id") @Min(1) long accountId,
-            HttpServletRequest httpServletRequest) {
+            @PathVariable("id")
+            @Min(1)
+            long accountId,
+            HttpServletRequest request) {
 
-        assertAccess(accountId, httpServletRequest);
+        assertAccess(accountId, request);
+
         return tradeService.getBalance(accountId);
     }
 
+    // =========================================================
+    // STORY 6 - POSITIONS
+    // =========================================================
+
     @GetMapping("/accounts/{id}/positions")
     public List<PositionResponse> getPositions(
-            @PathVariable("id") @Min(1) long accountId,
-            HttpServletRequest httpServletRequest) {
+            @PathVariable("id")
+            @Min(1)
+            long accountId,
+            HttpServletRequest request) {
 
-        assertAccess(accountId, httpServletRequest);
+        assertAccess(accountId, request);
+
         return tradeService.getPositions(accountId);
     }
 
+    // =========================================================
+    // STORY 6 - ORDER HISTORY
+    // =========================================================
+
     @GetMapping("/accounts/{id}/orders")
     public List<OrderHistoryEntry> getOrders(
-            @PathVariable("id") @Min(1) long accountId,
-            @RequestParam(required = false) OrderStatus status,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
-            HttpServletRequest httpServletRequest) {
+            @PathVariable("id")
+            @Min(1)
+            long accountId,
 
-        assertAccess(accountId, httpServletRequest);
-        return tradeService.getOrders(accountId, status, from, to);
+            @RequestParam(required = false)
+            OrderStatus status,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            OffsetDateTime from,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            OffsetDateTime to,
+
+            HttpServletRequest request) {
+
+        assertAccess(accountId, request);
+
+        return tradeService.getOrders(
+                accountId,
+                status,
+                from,
+                to);
     }
 
-    private static void assertAccess(long accountId, HttpServletRequest request) {
-        long authenticatedAccountId = AuthContext.requiredAccountId(request);
+    // =========================================================
+    // AUTHORIZATION
+    // =========================================================
+
+    private static void assertAccess(
+            long accountId,
+            HttpServletRequest request) {
+
+        long authenticatedAccountId =
+                AuthContext.requiredAccountId(request);
+
         if (authenticatedAccountId != accountId) {
-            throw new AccountNotActiveException(accountId, AccountStatus.ACTIVE);
+            throw new AccountNotActiveException(
+                    accountId,
+                    AccountStatus.ACTIVE);
         }
     }
 }
