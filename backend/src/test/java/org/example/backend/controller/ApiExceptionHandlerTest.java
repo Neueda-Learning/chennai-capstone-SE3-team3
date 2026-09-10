@@ -7,6 +7,8 @@ import org.example.backend.exceptions.DuplicateOrderException;
 import org.example.backend.exceptions.InsufficientFundsException;
 import org.example.backend.exceptions.InsufficientHoldingsException;
 import org.example.backend.exceptions.InstrumentNotFoundException;
+import org.example.backend.exceptions.OptimisticLockException;
+import org.example.backend.exceptions.OrderNotCancellableException;
 import org.example.backend.exceptions.UnauthorisedException;
 import org.example.backend.enums.AccountStatus;
 import org.junit.jupiter.api.Test;
@@ -14,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -80,6 +83,16 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
+    void testOptimisticLockMapsToORD409() {
+        OptimisticLockException ex = new OptimisticLockException();
+        ResponseEntity<ErrorResponse> response = handler.handleDomainErrors(ex);
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("ORD-409", response.getBody().errorCode());
+    }
+
+    @Test
     void testInsufficientHoldingsMapsToORD409() {
         InsufficientHoldingsException ex = new InsufficientHoldingsException(
                 1L,
@@ -88,6 +101,16 @@ class ApiExceptionHandlerTest {
                 50L);
         ResponseEntity<ErrorResponse> response = handler.handleDomainErrors(ex);
         
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("ORD-409", response.getBody().errorCode());
+    }
+
+    @Test
+    void testOrderNotCancellableMapsToORD409() {
+        OrderNotCancellableException ex = new OrderNotCancellableException(UUID.randomUUID());
+        ResponseEntity<ErrorResponse> response = handler.handleDomainErrors(ex);
+
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals("ORD-409", response.getBody().errorCode());
