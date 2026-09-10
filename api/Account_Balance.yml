@@ -1,0 +1,18 @@
+info:
+  name: Account_Balance
+  type: http
+  seq: 3
+
+http:
+  method: get
+  url: http://localhost:8080/api/v1/accounts/1001/balance
+  headers:
+    - name: Authorization
+      value: Bearer YOUR_TOKEN_HERE
+  auth: inherit
+
+settings:
+  encodeUrl: false
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

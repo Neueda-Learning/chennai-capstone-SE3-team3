@@ -91,7 +91,7 @@ class OrderMapperIntegrationTest {
         Order newOrder = new Order(
                 0,  // Will be generated
                 "IDEMP-TEST-0001",
-                OrderStatus.RECEIVED,
+                OrderStatus.NEW,
                 testReceivedAt,
                 OrderSide.BUY,
                 new BigDecimal("185.25"),
@@ -113,7 +113,7 @@ class OrderMapperIntegrationTest {
 
         Order order = retrieved.get();
         assertEquals("IDEMP-TEST-0001", order.getIdempotencyKey());
-        assertEquals(OrderStatus.RECEIVED, order.getOrderStatus());
+        assertEquals(OrderStatus.NEW, order.getOrderStatus());
         assertEquals(OrderSide.BUY, order.getOrderSide());
         assertEquals(new BigDecimal("185.25"), order.getPrice());
         assertEquals(10L, order.getQuantity());
@@ -126,7 +126,7 @@ class OrderMapperIntegrationTest {
         Order newOrder = new Order(
                 0,
                 "IDEMP-TEST-0002",
-                OrderStatus.RECEIVED,
+                OrderStatus.NEW,
                 testReceivedAt,
                 OrderSide.SELL,
                 new BigDecimal("190.00"),
@@ -157,7 +157,7 @@ class OrderMapperIntegrationTest {
         Order order1 = new Order(
                 0,
                 "IDEMP-TEST-0010",
-                OrderStatus.RECEIVED,
+                OrderStatus.NEW,
                 testReceivedAt,
                 OrderSide.BUY,
                 new BigDecimal("185.25"),
@@ -210,7 +210,7 @@ class OrderMapperIntegrationTest {
                 .findFirst()
                 .orElseThrow();
 
-        assertEquals(OrderStatus.RECEIVED, retrieved1.getOrderStatus());
+        assertEquals(OrderStatus.NEW, retrieved1.getOrderStatus());
         assertEquals(OrderSide.BUY, retrieved1.getOrderSide());
     }
 
@@ -218,7 +218,7 @@ class OrderMapperIntegrationTest {
     @DisplayName("Scenario: Positions filtered by status")
     void testSelectOrdersByStatusFilter() {
         // GIVEN: Orders with different statuses
-        Order received = new Order(0, "IDEMP-TEST-0020", OrderStatus.RECEIVED, testReceivedAt,
+        Order newOrder = new Order(0, "IDEMP-TEST-0020", OrderStatus.NEW, testReceivedAt,
                 OrderSide.BUY, new BigDecimal("185.00"), 10L, null,
                 testAccount.getAccountId(), 2001);
 
@@ -227,18 +227,18 @@ class OrderMapperIntegrationTest {
                 testReceivedAt.plusDays(1), testAccount.getAccountId(), 2001);
 
         // WHEN: Orders are inserted
-        orderMapper.insertOrder(received);
+        orderMapper.insertOrder(newOrder);
         orderMapper.insertOrder(filled);
 
-        // AND: We filter by RECEIVED status
-        List<Order> receivedOrders = orderMapper.selectOrdersByAccountIdAndStatus(
+        // AND: We filter by NEW status
+        List<Order> newOrders = orderMapper.selectOrdersByAccountIdAndStatus(
                 testAccount.getAccountId(),
-                OrderStatus.RECEIVED
+                OrderStatus.NEW
         );
 
-        // THEN: Only RECEIVED orders should be returned
-        assertEquals(1, receivedOrders.size());
-        assertEquals(OrderStatus.RECEIVED, receivedOrders.get(0).getOrderStatus());
+        // THEN: Only NEW orders should be returned
+        assertEquals(1, newOrders.size());
+        assertEquals(OrderStatus.NEW, newOrders.get(0).getOrderStatus());
     }
 
     // ===================================================
@@ -249,7 +249,7 @@ class OrderMapperIntegrationTest {
     @DisplayName("Scenario: Mapper reports the affected row count - Insert")
     void testMapperReportsAffectedRowCount_Insert() {
         // GIVEN: A new order
-        Order newOrder = new Order(0, "IDEMP-TEST-0030", OrderStatus.RECEIVED,
+        Order newOrder = new Order(0, "IDEMP-TEST-0030", OrderStatus.NEW,
                 testReceivedAt, OrderSide.BUY, new BigDecimal("185.00"), 10L, null,
                 testAccount.getAccountId(), 2001);
 
@@ -264,7 +264,7 @@ class OrderMapperIntegrationTest {
     @DisplayName("Scenario: Mapper reports the affected row count - Update")
     void testMapperReportsAffectedRowCount_Update() {
         // GIVEN: An inserted order
-        Order newOrder = new Order(0, "IDEMP-TEST-0031", OrderStatus.RECEIVED,
+        Order newOrder = new Order(0, "IDEMP-TEST-0031", OrderStatus.NEW,
                 testReceivedAt, OrderSide.BUY, new BigDecimal("185.00"), 10L, null,
                 testAccount.getAccountId(), 2001);
 
@@ -303,7 +303,7 @@ class OrderMapperIntegrationTest {
     @DisplayName("Scenario: Mapper surfaces constraint violation - Duplicate idempotency key")
     void testMapperSurfacesConstraintViolation_DuplicateIdempotencyKey() {
         // GIVEN: An order with a specific idempotency key
-        Order order1 = new Order(0, "IDEMP-UNIQUE-001", OrderStatus.RECEIVED,
+        Order order1 = new Order(0, "IDEMP-UNIQUE-001", OrderStatus.NEW,
                 testReceivedAt, OrderSide.BUY, new BigDecimal("185.00"), 10L, null,
                 testAccount.getAccountId(), 2001);
 
@@ -311,7 +311,7 @@ class OrderMapperIntegrationTest {
 
         // AND: Another order with the same idempotency key (violation of unique constraint)
         Order order2 = new Order(0, "IDEMP-UNIQUE-001",  // DUPLICATE!
-                OrderStatus.RECEIVED, testReceivedAt, OrderSide.BUY,
+                OrderStatus.NEW, testReceivedAt, OrderSide.BUY,
                 new BigDecimal("190.00"), 20L, null, testAccount.getAccountId(), 2001);
 
         // WHEN/THEN: Inserting the duplicate should raise DataIntegrityViolationException
@@ -326,7 +326,7 @@ class OrderMapperIntegrationTest {
     @DisplayName("Scenario: Mapper surfaces constraint violation - Invalid foreign key")
     void testMapperSurfacesConstraintViolation_InvalidForeignKey() {
         // GIVEN: An order with a non-existent account
-        Order order = new Order(0, "IDEMP-TEST-0040", OrderStatus.RECEIVED,
+        Order order = new Order(0, "IDEMP-TEST-0040", OrderStatus.NEW,
                 testReceivedAt, OrderSide.BUY, new BigDecimal("185.00"), 10L, null,
                 99999,  // NON-EXISTENT ACCOUNT!
                 2001);
@@ -344,17 +344,17 @@ class OrderMapperIntegrationTest {
     void testMapperSurfacesConstraintViolation_InvalidStatus() {
         // GIVEN: An order with an invalid status
         // This would normally be caught during object construction, but we test DB-level enforcement
-        Order order = new Order(0, "IDEMP-TEST-0041", OrderStatus.RECEIVED,
+        Order order = new Order(0, "IDEMP-TEST-0041", OrderStatus.NEW,
                 testReceivedAt, OrderSide.BUY, new BigDecimal("185.00"), 10L, null,
                 testAccount.getAccountId(), 2001);
 
         int insertResult = orderMapper.insertOrder(order);
         assertEquals(1, insertResult);
 
-        // Verify the order was inserted with RECEIVED status
+        // Verify the order was inserted with NEW status
         Optional<Order> retrieved = orderMapper.selectOrderById(order.getOrderId());
         assertTrue(retrieved.isPresent());
-        assertEquals(OrderStatus.RECEIVED, retrieved.get().getOrderStatus());
+        assertEquals(OrderStatus.NEW, retrieved.get().getOrderStatus());
     }
 
     // ===================================================
@@ -367,7 +367,7 @@ class OrderMapperIntegrationTest {
         // GIVEN: A malicious idempotency key that looks like SQL injection
         String maliciousKey = "IDEMP-001' OR '1'='1";  // SQL injection attempt
 
-        Order order = new Order(0, maliciousKey, OrderStatus.RECEIVED,
+        Order order = new Order(0, maliciousKey, OrderStatus.NEW,
                 testReceivedAt, OrderSide.BUY, new BigDecimal("185.00"), 10L, null,
                 testAccount.getAccountId(), 2001);
 
@@ -394,7 +394,7 @@ class OrderMapperIntegrationTest {
         // Attacker tries: symbol = "AAPL' OR '1'='1"
         // This would expose all positions if parameterization wasn't used
 
-        Order order1 = new Order(0, "IDEMP-SEC-001", OrderStatus.RECEIVED,
+        Order order1 = new Order(0, "IDEMP-SEC-001", OrderStatus.NEW,
                 testReceivedAt, OrderSide.BUY, new BigDecimal("185.00"), 10L, null,
                 testAccount.getAccountId(), 2001);  // AAPL
 

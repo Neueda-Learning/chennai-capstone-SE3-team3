@@ -1,6 +1,5 @@
 package org.example.backend.security;
 
-import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -14,13 +13,47 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class JwtConfiguration {
 
+    private static final int MIN_HS256_KEY_BYTES = 32;
+
     private final SecretKey signingKey;
 
     public JwtConfiguration(@Value("${jwt.secret}") String secret) {
-        this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        String normalizedSecret = normalize(secret);
+        byte[] keyBytes = normalizedSecret.getBytes(StandardCharsets.UTF_8);
+
+        if (keyBytes.length < MIN_HS256_KEY_BYTES) {
+            throw new IllegalStateException(
+                    "JWT_SECRET must be at least 32 bytes (256 bits) for HS256. "
+                            + "The configured value is only " + keyBytes.length + " bytes. "
+                            + "Set JWT_SECRET to a strong secret key, not a JWT token value.");
+        }
+
+        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
     public SecretKey getSigningKey() {
         return signingKey;
+    }
+
+    private static String normalize(String secret) {
+        if (secret == null) {
+            throw new IllegalStateException("JWT_SECRET is not configured.");
+        }
+
+        String trimmed = secret.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalStateException("JWT_SECRET is empty.");
+        }
+
+        if ((trimmed.startsWith("\"") && trimmed.endsWith("\""))
+                || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+            trimmed = trimmed.substring(1, trimmed.length() - 1).trim();
+        }
+
+        if (trimmed.isEmpty()) {
+            throw new IllegalStateException("JWT_SECRET is empty after trimming quotes.");
+        }
+
+        return trimmed;
     }
 }

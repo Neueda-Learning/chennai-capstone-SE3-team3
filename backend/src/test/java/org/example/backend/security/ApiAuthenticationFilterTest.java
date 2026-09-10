@@ -3,7 +3,6 @@ package org.example.backend.security;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.example.backend.exceptions.UnauthorisedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,8 +11,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.anyString;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,10 +40,13 @@ class ApiAuthenticationFilterTest {
     private FilterChain mockFilterChain;
 
     private ApiAuthenticationFilter filter;
+    private StringWriter responseBody;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         filter = new ApiAuthenticationFilter(mockVerifier);
+        responseBody = new StringWriter();
+        when(mockResponse.getWriter()).thenReturn(new PrintWriter(responseBody));
     }
 
     @Test
@@ -59,45 +63,37 @@ class ApiAuthenticationFilterTest {
     }
 
     @Test
-    void testMissingAuthorizationHeaderThrowsUnauthorizedException() throws Exception {
+    void testMissingAuthorizationHeaderReturnsUnauthorizedResponse() throws Exception {
         when(mockRequest.getRequestURI()).thenReturn("/api/v1/orders");
         when(mockRequest.getHeader("Authorization")).thenReturn(null);
 
-        assertThrows(UnauthorisedException.class, () -> {
-            try {
-                filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
-            } catch (jakarta.servlet.ServletException | java.io.IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
+
+        verify(mockResponse).setStatus(401);
+        verify(mockFilterChain, never()).doFilter(mockRequest, mockResponse);
+        assertEquals("{\"errorCode\":\"AUTH-401\",\"message\":\"Unauthorised\"}", responseBody.toString());
     }
 
     @Test
-    void testInvalidBearerSchemeThrowsUnauthorizedException() throws Exception {
+    void testInvalidBearerSchemeReturnsUnauthorizedResponse() throws Exception {
         when(mockRequest.getRequestURI()).thenReturn("/api/v1/orders");
         when(mockRequest.getHeader("Authorization")).thenReturn("Basic token");
 
-        assertThrows(UnauthorisedException.class, () -> {
-            try {
-                filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
-            } catch (jakarta.servlet.ServletException | java.io.IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
+
+        verify(mockResponse).setStatus(401);
+        verify(mockFilterChain, never()).doFilter(mockRequest, mockResponse);
     }
 
     @Test
-    void testEmptyBearerTokenThrowsUnauthorizedException() throws Exception {
+    void testEmptyBearerTokenReturnsUnauthorizedResponse() throws Exception {
         when(mockRequest.getRequestURI()).thenReturn("/api/v1/orders");
         when(mockRequest.getHeader("Authorization")).thenReturn("Bearer ");
 
-        assertThrows(UnauthorisedException.class, () -> {
-            try {
-                filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
-            } catch (jakarta.servlet.ServletException | java.io.IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
+
+        verify(mockResponse).setStatus(401);
+        verify(mockFilterChain, never()).doFilter(mockRequest, mockResponse);
     }
 
     @Test
@@ -112,17 +108,14 @@ class ApiAuthenticationFilterTest {
     }
 
     @Test
-    void testInvalidDevTokenThrowsUnauthorizedException() throws Exception {
+    void testInvalidDevTokenReturnsUnauthorizedResponse() throws Exception {
         when(mockRequest.getRequestURI()).thenReturn("/api/v1/orders");
         when(mockRequest.getHeader("Authorization")).thenReturn("Bearer dev-account-not-a-number");
 
-        assertThrows(UnauthorisedException.class, () -> {
-            try {
-                filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
-            } catch (jakarta.servlet.ServletException | java.io.IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
+
+        verify(mockResponse).setStatus(401);
+        verify(mockFilterChain, never()).doFilter(mockRequest, mockResponse);
     }
 
     @Test
@@ -138,20 +131,15 @@ class ApiAuthenticationFilterTest {
     }
 
     @Test
-    void testJwtVerificationFailureThrowsUnauthorizedException() throws Exception {
+    void testJwtVerificationFailureReturnsUnauthorizedResponse() throws Exception {
         when(mockRequest.getRequestURI()).thenReturn("/api/v1/orders");
         when(mockRequest.getHeader("Authorization")).thenReturn("Bearer expired.jwt.token");
         when(mockVerifier.verifyAndExtractAccountId("expired.jwt.token"))
             .thenThrow(new JwtVerifier.JwtVerificationException("Token expired"));
 
-        assertThrows(UnauthorisedException.class, () -> {
-            try {
-                filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
-            } catch (jakarta.servlet.ServletException | java.io.IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
         
+        verify(mockResponse).setStatus(401);
         verify(mockFilterChain, never()).doFilter(mockRequest, mockResponse);
     }
 }

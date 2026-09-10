@@ -4,9 +4,12 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.example.backend.dto.ErrorResponse;
 import org.example.backend.exceptions.UnauthorisedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -48,19 +51,22 @@ public class ApiAuthenticationFilter extends OncePerRequestFilter {
         // Check header presence and scheme
         if (header == null || !header.startsWith("Bearer ")) {
             logger.warn("Missing or invalid Authorization header");
-            throw new UnauthorisedException();
+            reject(response);
+            return;
         }
 
         String token = header.substring(7).trim();
         if (token.isEmpty()) {
             logger.warn("Empty Bearer token");
-            throw new UnauthorisedException();
+            reject(response);
+            return;
         }
 
         Long accountId = extractAccountId(token);
         if (accountId == null || accountId < 1) {
             logger.warn("Failed to extract valid account ID from token");
-            throw new UnauthorisedException();
+            reject(response);
+            return;
         }
 
         request.setAttribute(AuthContext.ACCOUNT_ID_ATTRIBUTE, accountId);
@@ -94,5 +100,16 @@ public class ApiAuthenticationFilter extends OncePerRequestFilter {
             logger.warn("Invalid dev token format: {}", token);
             return null;
         }
+    }
+
+    private void reject(HttpServletResponse response) throws IOException {
+        UnauthorisedException exception = new UnauthorisedException();
+        ErrorResponse error = new ErrorResponse(exception.getErrorCode(), exception.getMessage());
+
+        response.setStatus(HttpStatus.UNAUTHORIZED.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write(
+                "{\"errorCode\":\"" + error.errorCode() + "\",\"message\":\"" + error.message() + "\"}");
     }
 }
