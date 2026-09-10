@@ -5,19 +5,31 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.example.backend.exceptions.UnauthorisedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
+/**
+ * Authenticates all /api/v1/* requests by verifying JWT Bearer token.
+ * 
+ * Check order: signature → expiry → algorithm (per story requirements).
+ * Dev tokens (dev-account-N) are supported for testing.
+ * All token failures return AUTH-401 (Unauthorised).
+ */
 @Component
 public class ApiAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final Pattern ACCOUNT_ID_CLAIM = Pattern.compile("\\\"accountId\\\"\\s*:\\s*(?:\\\"(\\\\d+)\\\"|(\\\\d+))");
+    private static final Logger logger = LoggerFactory.getLogger(ApiAuthenticationFilter.class);
+    private static final String DEV_TOKEN_PREFIX = "dev-account-";
+
+    private final JwtVerifier jwtVerifier;
+
+    public ApiAuthenticationFilter(JwtVerifier jwtVerifier) {
+        this.jwtVerifier = jwtVerifier;
+    }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -32,13 +44,22 @@ public class ApiAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain) throws ServletException, IOException {
 
         String header = request.getHeader("Authorization");
+        
+        // Check header presence and scheme
         if (header == null || !header.startsWith("Bearer ")) {
+            logger.warn("Missing or invalid Authorization header");
             throw new UnauthorisedException();
         }
 
         String token = header.substring(7).trim();
-        Long accountId = parseAccountId(token);
+        if (token.isEmpty()) {
+            logger.warn("Empty Bearer token");
+            throw new UnauthorisedException();
+        }
+
+        Long accountId = extractAccountId(token);
         if (accountId == null || accountId < 1) {
+            logger.warn("Failed to extract valid account ID from token");
             throw new UnauthorisedException();
         }
 
@@ -46,35 +67,31 @@ public class ApiAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private Long parseAccountId(String token) {
-        if (token.startsWith("dev-account-")) {
-            String id = token.substring("dev-account-".length());
-            return parseLong(id);
+    /**
+     * Extract account ID from token.
+     * Tries dev token format first, then JWT verification.
+     */
+    private Long extractAccountId(String token) {
+        // Support dev tokens for testing
+        if (token.startsWith(DEV_TOKEN_PREFIX)) {
+            return parseDevToken(token);
         }
 
-        String[] parts = token.split("\\.");
-        if (parts.length != 3) {
-            return null;
-        }
-
+        // Verify JWT token (signature → expiry → algorithm)
         try {
-            byte[] decoded = Base64.getUrlDecoder().decode(parts[1]);
-            String payload = new String(decoded, StandardCharsets.UTF_8);
-            Matcher matcher = ACCOUNT_ID_CLAIM.matcher(payload);
-            if (!matcher.find()) {
-                return null;
-            }
-            String value = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
-            return parseLong(value);
-        } catch (IllegalArgumentException ignored) {
+            return jwtVerifier.verifyAndExtractAccountId(token);
+        } catch (JwtVerifier.JwtVerificationException e) {
+            // All JWT failures logged by verifier; return null to trigger AUTH-401
             return null;
         }
     }
 
-    private static Long parseLong(String raw) {
+    private Long parseDevToken(String token) {
         try {
-            return Long.parseLong(raw);
-        } catch (NumberFormatException ignored) {
+            String idStr = token.substring(DEV_TOKEN_PREFIX.length());
+            return Long.parseLong(idStr);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid dev token format: {}", token);
             return null;
         }
     }
