@@ -92,8 +92,12 @@
             <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.enterprise.trading</groupId>
+            <artifactId>sprint-05-domain-engine</artifactId>
+            <version>1.0-SNAPSHOT</version>
 
-
+        </dependency>
     </dependencies>
 
     <build>
