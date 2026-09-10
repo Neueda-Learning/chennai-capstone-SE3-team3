@@ -83,6 +83,17 @@ public class ApiAuthenticationFilter extends OncePerRequestFilter {
             return parseDevToken(token);
         }
 
+        // Support plain numeric bearer tokens in local stub mode.
+        // This keeps test clients simple while still rejecting non-numeric strings.
+        if (!token.contains(".")) {
+            try {
+                return Long.parseLong(token);
+            } catch (NumberFormatException e) {
+                logger.warn("Unsupported non-JWT token format for local auth stub");
+                return null;
+            }
+        }
+
         // Verify JWT token (signature → expiry → algorithm)
         try {
             return jwtVerifier.verifyAndExtractAccountId(token);

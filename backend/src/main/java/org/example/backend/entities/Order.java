@@ -32,7 +32,7 @@ public class Order {
 
     @NotNull
     @DecimalMin(value = "0.00", inclusive = false)
-    @Digits(integer = 17, fraction = 2)
+    @Digits(integer = 17, fraction = 4)
     private final BigDecimal price;
 
     @Positive
@@ -100,9 +100,9 @@ public class Order {
                     "Price must be greater than zero");
         }
 
-        if (price.scale() > 2) {
+        if (price.scale() > 4) {
             throw new IllegalArgumentException(
-                    "Price cannot have more than two decimal places");
+                "Price cannot have more than four decimal places");
         }
 
         if (quantity <= 0) {
@@ -125,7 +125,7 @@ public class Order {
         this.orderStatus = orderStatus;
         this.receivedAt = receivedAt;
         this.orderSide = orderSide;
-        this.price = price.setScale(2);
+        this.price = price.setScale(4);
         this.quantity = quantity;
         this.transactionDate = transactionDate;
         this.accountId = accountId;

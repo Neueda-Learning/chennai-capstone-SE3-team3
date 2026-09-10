@@ -201,7 +201,7 @@ public class Account {
     private static BigDecimal normaliseMoney(
             BigDecimal value) {
 
-        return value.setScale(2);
+        return value.setScale(4);
     }
 
     private static void validateMoney(
@@ -217,10 +217,10 @@ public class Account {
                     fieldName + " cannot be negative");
         }
 
-        if(value.scale() > 2) {
+        if(value.scale() > 4) {
             throw new IllegalArgumentException(
                     fieldName
-                            + " cannot have more than two decimal places");
+                    + " cannot have more than four decimal places");
         }
     }
 
