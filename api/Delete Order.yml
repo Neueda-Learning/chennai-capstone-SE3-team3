@@ -5,8 +5,10 @@ info:
 
 http:
   method: DELETE
-  url: orders/1
-  auth: inherit
+  url: orders/6
+  auth:
+    type: bearer
+    token: "{{JWT_KEY}}"
 
 settings:
   encodeUrl: true
