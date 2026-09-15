@@ -10,6 +10,7 @@ import org.example.backend.exceptions.DuplicateOrderException;
 import org.example.backend.exceptions.InsufficientFundsException;
 import org.example.backend.exceptions.InsufficientHoldingsException;
 import org.example.backend.exceptions.InstrumentNotFoundException;
+import org.example.backend.exceptions.OptimisticLockException;
 import org.example.backend.exceptions.OrderNotCancellableException;
 import org.example.backend.exceptions.OrderNotFoundException;
 import org.example.backend.exceptions.UnauthorisedException;
@@ -28,20 +29,52 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 public class ApiExceptionHandler {
 
     @ExceptionHandler(DomainException.class)
-    public ResponseEntity<ErrorResponse> handleDomainErrors(DomainException ex) {
+    public ResponseEntity<ErrorResponse> handleDomainErrors(
+            DomainException ex) {
+
         HttpStatus status = switch (ex) {
-            case UnauthorisedException ignored -> HttpStatus.UNAUTHORIZED;
-            case AccountNotActiveException ignored -> HttpStatus.FORBIDDEN;
-            case AccountNotFoundException ignored -> HttpStatus.NOT_FOUND;
-            case InstrumentNotFoundException ignored -> HttpStatus.NOT_FOUND;
-            case InsufficientFundsException ignored -> HttpStatus.BAD_REQUEST;
-            case InsufficientHoldingsException ignored -> HttpStatus.CONFLICT;
-            case DuplicateOrderException ignored -> HttpStatus.CONFLICT;
-            case OrderNotCancellableException ignored -> HttpStatus.CONFLICT;
-            case OrderNotFoundException ignored -> HttpStatus.NOT_FOUND;
-            default -> HttpStatus.UNPROCESSABLE_ENTITY;
+            case UnauthorisedException ignored ->
+                    HttpStatus.UNAUTHORIZED;
+
+            case AccountNotActiveException ignored ->
+                    HttpStatus.FORBIDDEN;
+
+            case AccountNotFoundException ignored ->
+                    HttpStatus.NOT_FOUND;
+
+            case InstrumentNotFoundException ignored ->
+                    HttpStatus.NOT_FOUND;
+
+            case InsufficientFundsException ignored ->
+                    HttpStatus.BAD_REQUEST;
+
+            case InsufficientHoldingsException ignored ->
+                    HttpStatus.CONFLICT;
+
+            case DuplicateOrderException ignored ->
+                    HttpStatus.CONFLICT;
+
+            case OptimisticLockException ignored ->
+                    HttpStatus.CONFLICT;
+
+            case OrderNotCancellableException ignored ->
+                    HttpStatus.CONFLICT;
+
+            case OrderNotFoundException ignored ->
+                    HttpStatus.NOT_FOUND;
+
+            default ->
+                    HttpStatus.UNPROCESSABLE_ENTITY;
         };
-        return ResponseEntity.status(status).body(new ErrorResponse(ex.getErrorCode(), ex.getMessage()));
+
+        return ResponseEntity
+                .status(status)
+                .body(
+                        new ErrorResponse(
+                                ex.getErrorCode(),
+                                ex.getMessage()
+                        )
+                );
     }
 
     @ExceptionHandler({
@@ -52,29 +85,60 @@ public class ApiExceptionHandler {
             MissingServletRequestParameterException.class,
             MethodArgumentTypeMismatchException.class
     })
-    public ResponseEntity<ErrorResponse> handleValidationErrors(Exception ex) {
-        return ResponseEntity.unprocessableEntity().body(new ErrorResponse("VAL-422", validationMessage(ex)));
+    public ResponseEntity<ErrorResponse> handleValidationErrors(
+            Exception ex) {
+
+        return ResponseEntity
+                .unprocessableEntity()
+                .body(
+                        new ErrorResponse(
+                                "VAL-422",
+                                validationMessage(ex)
+                        )
+                );
     }
 
     @ExceptionHandler(NoHandlerFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNotFound(NoHandlerFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ErrorResponse("VAL-422", "Invalid input"));
+    public ResponseEntity<ErrorResponse> handleNotFound(
+            NoHandlerFoundException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(
+                        new ErrorResponse(
+                                "VAL-422",
+                                "Invalid input"
+                        )
+                );
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleFallback(Exception ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                .body(new ErrorResponse("VAL-422", "Invalid input"));
+    public ResponseEntity<ErrorResponse> handleFallback(
+            Exception ex,
+            HttpServletRequest request) {
+
+        return ResponseEntity
+                .status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(
+                        new ErrorResponse(
+                                "VAL-422",
+                                "Invalid input"
+                        )
+                );
     }
 
     private static String validationMessage(Exception ex) {
+
         if (ex instanceof MethodArgumentNotValidException manve) {
-            FieldError fieldError = manve.getBindingResult().getFieldError();
+
+            FieldError fieldError =
+                    manve.getBindingResult().getFieldError();
+
             if (fieldError != null) {
                 return "Invalid input";
             }
         }
+
         return "Invalid input";
     }
 }
