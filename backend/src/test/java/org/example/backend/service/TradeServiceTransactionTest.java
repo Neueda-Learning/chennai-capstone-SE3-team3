@@ -80,7 +80,7 @@ class TradeServiceTransactionTest {
                 .thenReturn(Optional.empty());
         when(accountMapper.updateAccountBalanceWithVersion(
                 ACCOUNT_ID,
-                new BigDecimal("20000.00"),
+                new BigDecimal("20000.0000"),
                 3L))
                 .thenReturn(1);
         when(holdingMapper.selectHoldingByAccountAndInstrument(
@@ -105,13 +105,13 @@ class TradeServiceTransactionTest {
         assertEquals("ACME", response.symbol());
         assertEquals(OrderSide.BUY, response.side());
         assertEquals(100, response.quantity());
-        assertEquals(new BigDecimal("50.00"), response.price());
+        assertEquals(new BigDecimal("50.0000"), response.price());
 
         InOrder orderedCalls = inOrder(accountMapper, holdingMapper, orderMapper);
         orderedCalls.verify(accountMapper)
                 .updateAccountBalanceWithVersion(
                         ACCOUNT_ID,
-                        new BigDecimal("20000.00"),
+                        new BigDecimal("20000.0000"),
                         3L);
         orderedCalls.verify(holdingMapper)
                 .insertHolding(any(Holding.class));
@@ -132,7 +132,7 @@ class TradeServiceTransactionTest {
                 .thenReturn(Optional.empty());
         when(accountMapper.updateAccountBalanceWithVersion(
                 ACCOUNT_ID,
-                new BigDecimal("20000.00"),
+                new BigDecimal("20000.0000"),
                 7L))
                 .thenReturn(0);
 

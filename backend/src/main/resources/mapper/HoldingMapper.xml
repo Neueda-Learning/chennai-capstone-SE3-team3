@@ -38,14 +38,15 @@
       Returns the number of rows affected (1 on success).
       Constraint violations (duplicate account-instrument pair) are surfaced.
     -->
-    <insert id="insertHolding" parameterType="org.example.backend.entities.Holding"
-            useGeneratedKeys="true" keyProperty="holdingId">
+    <insert id="insertHolding" parameterType="org.example.backend.entities.Holding">
         INSERT INTO holdings (
+            holding_id,
             quantity,
             purchase_price,
             account_id,
             instrument_id
         ) VALUES (
+            #{holding.holdingId},
             #{holding.quantity},
             #{holding.purchasePrice},
             #{holding.accountId},

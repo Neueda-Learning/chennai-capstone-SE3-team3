@@ -14,6 +14,8 @@ import org.example.backend.enums.AccountStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -134,5 +136,28 @@ class ApiExceptionHandlerTest {
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals("VAL-422", response.getBody().errorCode());
+    }
+
+    @Test
+    void testNoHandlerMapsToRes404() {
+        NoHandlerFoundException ex = new NoHandlerFoundException("GET", "/accounts/1001/orders", null);
+        ResponseEntity<ErrorResponse> response = handler.handleNotFound(ex);
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("RES-404", response.getBody().errorCode());
+        assertEquals("Resource not found", response.getBody().message());
+    }
+
+    @Test
+    void testFallbackMapsToSrv500() {
+        RuntimeException ex = new RuntimeException("boom");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/accounts/1001/orders");
+        ResponseEntity<ErrorResponse> response = handler.handleFallback(ex, request);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("SRV-500", response.getBody().errorCode());
+        assertEquals("Internal server error", response.getBody().message());
     }
 }

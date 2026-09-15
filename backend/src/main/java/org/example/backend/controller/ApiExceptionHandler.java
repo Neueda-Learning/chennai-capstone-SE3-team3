@@ -14,6 +14,8 @@ import org.example.backend.exceptions.OptimisticLockException;
 import org.example.backend.exceptions.OrderNotCancellableException;
 import org.example.backend.exceptions.OrderNotFoundException;
 import org.example.backend.exceptions.UnauthorisedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -27,6 +29,8 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
     @ExceptionHandler(DomainException.class)
     public ResponseEntity<ErrorResponse> handleDomainErrors(
@@ -106,8 +110,8 @@ public class ApiExceptionHandler {
                 .status(HttpStatus.NOT_FOUND)
                 .body(
                         new ErrorResponse(
-                                "VAL-422",
-                                "Invalid input"
+                                "RES-404",
+                                "Resource not found"
                         )
                 );
     }
@@ -117,12 +121,14 @@ public class ApiExceptionHandler {
             Exception ex,
             HttpServletRequest request) {
 
+        logger.error("Unhandled exception on {} {}", request.getMethod(), request.getRequestURI(), ex);
+
         return ResponseEntity
-                .status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(
                         new ErrorResponse(
-                                "VAL-422",
-                                "Invalid input"
+                                "SRV-500",
+                                "Internal server error"
                         )
                 );
     }

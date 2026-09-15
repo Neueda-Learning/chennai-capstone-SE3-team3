@@ -50,9 +50,9 @@
       Returns the number of rows affected (1 on success).
       Constraint violations are surfaced to the caller.
     -->
-    <insert id="insertOrder" parameterType="org.example.backend.entities.Order"
-            useGeneratedKeys="true" keyProperty="orderId">
+    <insert id="insertOrder" parameterType="org.example.backend.entities.Order">
         INSERT INTO orders (
+            order_id,
             idempotency_key,
             order_status,
             received_at,
@@ -63,6 +63,7 @@
             account_id,
             instrument_id
         ) VALUES (
+            #{order.orderId},
             #{order.idempotencyKey},
             #{order.orderStatus},
             #{order.receivedAt},

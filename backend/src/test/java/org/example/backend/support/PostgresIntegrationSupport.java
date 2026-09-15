@@ -94,4 +94,3 @@ public abstract class PostgresIntegrationSupport {
         jdbcTemplate.execute("TRUNCATE TABLE orders, holdings, account, instrument, client RESTART IDENTITY CASCADE");
     }
 }
-

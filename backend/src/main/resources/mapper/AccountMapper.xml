@@ -44,9 +44,9 @@
       All values are bound as JDBC bind parameters.
       Returns the number of rows affected.
     -->
-    <insert id="insertAccount" parameterType="org.example.backend.entities.Account"
-            useGeneratedKeys="true" keyProperty="accountId">
+    <insert id="insertAccount" parameterType="org.example.backend.entities.Account">
         INSERT INTO account (
+            account_id,
             account_number,
             opening_date,
             balance,
@@ -58,6 +58,7 @@
             closed_at,
             client_id
         ) VALUES (
+            #{account.accountId},
             #{account.accountNumber},
             #{account.openingDate},
             #{account.balance},
