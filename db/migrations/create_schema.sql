@@ -354,13 +354,6 @@ BEGIN
 END;
 $$;
 
-
-
-CREATE TRIGGER trg_order_terminal_state
-BEFORE UPDATE OF order_status, transaction_date ON orders
-FOR EACH ROW
-EXECUTE FUNCTION enforce_order_terminal_state();
-
 -- ============================================================
 -- 6. HOLDINGS
 -- ============================================================
