@@ -64,7 +64,10 @@
             instrument_id
         ) VALUES (
             #{order.idempotencyKey},
-            #{order.orderStatus},
+          <choose>
+            <when test="order.orderStatus.name() == 'NEW'">RECEIVED</when>
+            <otherwise>#{order.orderStatus}</otherwise>
+          </choose>,
             #{order.receivedAt},
             #{order.orderSide},
             #{order.price},
@@ -88,7 +91,7 @@
         SELECT
             order_id,
             idempotency_key,
-            order_status,
+        CASE WHEN order_status = 'RECEIVED' THEN 'NEW' ELSE order_status END AS order_status,
             received_at,
             order_type,
             price,
@@ -110,7 +113,7 @@
         SELECT
             order_id,
             idempotency_key,
-            order_status,
+        CASE WHEN order_status = 'RECEIVED' THEN 'NEW' ELSE order_status END AS order_status,
             received_at,
             order_type,
             price,
@@ -396,7 +399,7 @@
         ELSE NULL
         END AS executed_price,
 
-        o.order_status,
+        CASE WHEN o.order_status = 'RECEIVED' THEN 'NEW' ELSE o.order_status END AS order_status,
         o.idempotency_key,
         o.received_at
 
@@ -408,7 +411,14 @@
         WHERE o.account_id = #{accountId}
 
         <if test="status != null">
-            AND o.order_status = #{status}
+          <choose>
+            <when test="status.name() == 'NEW'">
+              AND o.order_status IN ('NEW', 'RECEIVED')
+            </when>
+            <otherwise>
+              AND o.order_status = #{status}
+            </otherwise>
+          </choose>
         </if>
 
         <if test="from != null">
@@ -455,7 +465,7 @@
 
         WHERE order_id = #{orderId}
           AND account_id = #{accountId}
-          AND order_status = 'NEW'
+          AND order_status IN ('NEW', 'RECEIVED')
 
     </update>
 
