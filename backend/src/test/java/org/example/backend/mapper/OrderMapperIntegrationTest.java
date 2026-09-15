@@ -220,11 +220,7 @@ class OrderMapperIntegrationTest {
     @DisplayName("Scenario: Positions filtered by status")
     void testSelectOrdersByStatusFilter() {
         // GIVEN: Orders with different statuses
-<<<<<<< Updated upstream
         Order newOrder = new Order(0, "IDEMP-TEST-0020", OrderStatus.NEW, testReceivedAt,
-=======
-        Order received = new Order(0, "IDEMP-TEST-0020", OrderStatus.NEW, testReceivedAt,
->>>>>>> Stashed changes
                 OrderSide.BUY, new BigDecimal("185.00"), 10L, null,
                 testAccount.getAccountId(), 2001);
 
@@ -242,15 +238,9 @@ class OrderMapperIntegrationTest {
                 OrderStatus.NEW
         );
 
-<<<<<<< Updated upstream
         // THEN: Only NEW orders should be returned
         assertEquals(1, newOrders.size());
         assertEquals(OrderStatus.NEW, newOrders.get(0).getOrderStatus());
-=======
-        // THEN: Only RECEIVED orders should be returned
-        assertEquals(1, receivedOrders.size());
-        assertEquals(OrderStatus.NEW, receivedOrders.get(0).getOrderStatus());
->>>>>>> Stashed changes
     }
 
     // ===================================================
