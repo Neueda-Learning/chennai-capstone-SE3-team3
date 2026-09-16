@@ -65,6 +65,43 @@ public class TradeService {
             long quantity,
             String idempotencyKey) {
 
+        Account account = requireActiveAccount(accountId);
+        Instrument instrument = requireTradableInstrument(symbol);
+        ensureIdempotencyKeyUnused(idempotencyKey);
+
+        BigDecimal orderValue = calculateOrderValue(price, quantity);
+        Holding sellHolding = validateOrderAndLoadSellHolding(
+                accountId,
+                symbol,
+                side,
+                quantity,
+                account,
+                instrument,
+                orderValue);
+
+        applyCashChange(account, side, orderValue);
+        updateAccountBalanceOrThrow(accountId, account);
+        persistHoldingChange(accountId, side, quantity, price, instrument, sellHolding);
+
+        Order order = createAndPersistFilledOrder(
+                accountId,
+                instrument,
+                side,
+                quantity,
+                price,
+                idempotencyKey);
+
+        return new OrderResponse(
+                String.valueOf(order.getOrderId()),
+                order.getOrderStatus(),
+                "Order placed successfully",
+                symbol,
+                order.getOrderSide(),
+                (int) order.getQuantity(),
+                order.getPrice());
+    }
+
+    private Account requireActiveAccount(long accountId) {
         Account account = accountMapper
                 .selectAccountById((int) accountId)
                 .orElseThrow(() ->
@@ -76,6 +113,10 @@ public class TradeService {
                     account.getAccountStatus());
         }
 
+        return account;
+    }
+
+    private Instrument requireTradableInstrument(String symbol) {
         Instrument instrument = instrumentMapper
                 .selectInstrumentByTicker(symbol)
                 .orElseThrow(() ->
@@ -85,21 +126,204 @@ public class TradeService {
             throw new InstrumentNotFoundException(symbol);
         }
 
+        return instrument;
+    }
+
+    private void ensureIdempotencyKeyUnused(String idempotencyKey) {
         if (orderMapper
                 .selectOrderByIdempotencyKey(idempotencyKey)
                 .isPresent()) {
 
             throw new DuplicateOrderException(idempotencyKey);
         }
+    }
 
-        // -----------------------------------------------------
-        // Create order
-        // -----------------------------------------------------
+    private static BigDecimal calculateOrderValue(
+            BigDecimal price,
+            long quantity) {
+
+        return price
+                .multiply(BigDecimal.valueOf(quantity))
+                .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private Holding validateOrderAndLoadSellHolding(
+            long accountId,
+            String symbol,
+            OrderSide side,
+            long quantity,
+            Account account,
+            Instrument instrument,
+            BigDecimal orderValue) {
+
+        if (side == OrderSide.BUY) {
+            assertSufficientFunds(accountId, account, orderValue);
+            return null;
+        }
+
+        return requireSufficientHolding(
+                accountId,
+                symbol,
+                quantity,
+                instrument.getInstrumentId());
+    }
+
+    private void assertSufficientFunds(
+            long accountId,
+            Account account,
+            BigDecimal orderValue) {
+
+        if (!account.canAfford(orderValue)) {
+            throw new InsufficientFundsException(
+                    accountId,
+                    orderValue,
+                    account.getBalance());
+        }
+    }
+
+    private Holding requireSufficientHolding(
+            long accountId,
+            String symbol,
+            long quantity,
+            int instrumentId) {
+
+        Holding holding = holdingMapper
+                .selectHoldingByAccountAndInstrument(
+                        (int) accountId,
+                        instrumentId)
+                .orElse(null);
+
+        long availableQuantity =
+                holding == null
+                        ? 0
+                        : holding.getQuantity();
+
+        if (availableQuantity < quantity) {
+            throw new InsufficientHoldingsException(
+                    accountId,
+                    symbol,
+                    quantity,
+                    availableQuantity);
+        }
+
+        return holding;
+    }
+
+    private static void applyCashChange(
+            Account account,
+            OrderSide side,
+            BigDecimal orderValue) {
+
+        if (side == OrderSide.BUY) {
+            account.debit(orderValue);
+        } else {
+            account.credit(orderValue);
+        }
+    }
+
+    private void updateAccountBalanceOrThrow(
+            long accountId,
+            Account account) {
+
+        int affectedRows = accountMapper.updateAccountBalanceWithVersion(
+                (int) accountId,
+                account.getBalance(),
+                account.getVersion());
+
+        if (affectedRows == 0) {
+            throw new OptimisticLockException();
+        }
+    }
+
+    private void persistHoldingChange(
+            long accountId,
+            OrderSide side,
+            long quantity,
+            BigDecimal price,
+            Instrument instrument,
+            Holding sellHolding) {
+
+        if (side == OrderSide.BUY) {
+            upsertBuyHolding(accountId, quantity, price, instrument);
+            return;
+        }
+
+        long remainingQuantity = sellHolding.getQuantity() - quantity;
+        holdingMapper.updateHoldingQuantity(
+                sellHolding.getHoldingId(),
+                remainingQuantity);
+    }
+
+    private void upsertBuyHolding(
+            long accountId,
+            long quantity,
+            BigDecimal price,
+            Instrument instrument) {
+
+        Holding existingHolding = holdingMapper
+                .selectHoldingByAccountAndInstrument(
+                        (int) accountId,
+                        instrument.getInstrumentId())
+                .orElse(null);
+
+        if (existingHolding == null) {
+            insertNewHolding(accountId, quantity, price, instrument);
+            return;
+        }
+
+        long oldQuantity = existingHolding.getQuantity();
+        long newQuantity = oldQuantity + quantity;
+
+        BigDecimal oldValue = existingHolding.getPurchasePrice()
+                .multiply(BigDecimal.valueOf(oldQuantity));
+
+        BigDecimal newValue = price
+                .multiply(BigDecimal.valueOf(quantity));
+
+        BigDecimal averagePrice = oldValue
+                .add(newValue)
+                .divide(
+                        BigDecimal.valueOf(newQuantity),
+                        2,
+                        RoundingMode.HALF_UP);
+
+        holdingMapper.updateHoldingQuantityAndPrice(
+                existingHolding.getHoldingId(),
+                newQuantity,
+                averagePrice);
+    }
+
+    private void insertNewHolding(
+            long accountId,
+            long quantity,
+            BigDecimal price,
+            Instrument instrument) {
+
+        long holdingId = holdingMapper.nextHoldingId();
+
+        Holding newHolding = new Holding(
+                holdingId,
+                quantity,
+                price,
+                (int) accountId,
+                instrument.getInstrumentId());
+
+        holdingMapper.insertHolding(newHolding);
+    }
+
+    // -----------------------------------------------------
+    // Create order
+    // -----------------------------------------------------
+    private Order createAndPersistFilledOrder(
+            long accountId,
+            Instrument instrument,
+            OrderSide side,
+            long quantity,
+            BigDecimal price,
+            String idempotencyKey) {
 
         long orderId = orderMapper.nextOrderId();
-
-        OffsetDateTime receivedAt =
-                OffsetDateTime.now();
+        OffsetDateTime receivedAt = OffsetDateTime.now();
 
         Order order = new Order(
                 orderId,
@@ -113,25 +337,9 @@ public class TradeService {
                 (int) accountId,
                 instrument.getInstrumentId());
 
+        order.fill();
         orderMapper.insertOrder(order);
-
-        orderPlacedAfterCommitListener.onOrderPlaced(
-                new OrderPlacedEvent(
-                        order.getOrderId(),
-                        order.getAccountId(),
-                        symbol,
-                        order.getOrderSide(),
-                        order.getQuantity(),
-                        order.getReceivedAt()));
-
-        return new OrderResponse(
-                String.valueOf(order.getOrderId()),
-                order.getOrderStatus(),
-                "Order placed successfully",
-                symbol,
-                order.getOrderSide(),
-                (int) order.getQuantity(),
-                order.getPrice());
+        return order;
     }
 
     // =========================================================
