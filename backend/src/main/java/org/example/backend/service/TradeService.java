@@ -6,6 +6,7 @@ import org.example.backend.dto.OrderHistoryEntry;
 import org.example.backend.dto.OrderResponse;
 import org.example.backend.dto.PositionResponse;
 import org.example.backend.entities.Account;
+import org.example.backend.entities.Holding;
 import org.example.backend.entities.Instrument;
 import org.example.backend.entities.Order;
 import org.example.backend.events.OrderPlacedAfterCommitListener;
@@ -17,6 +18,9 @@ import org.example.backend.exceptions.AccountNotActiveException;
 import org.example.backend.exceptions.AccountNotFoundException;
 import org.example.backend.exceptions.DuplicateOrderException;
 import org.example.backend.exceptions.InstrumentNotFoundException;
+import org.example.backend.exceptions.InsufficientFundsException;
+import org.example.backend.exceptions.InsufficientHoldingsException;
+import org.example.backend.exceptions.OptimisticLockException;
 import org.example.backend.exceptions.OrderNotFoundException;
 import org.example.backend.exceptions.OrderNotCancellableException;
 import org.example.backend.mapper.AccountMapper;
@@ -26,6 +30,8 @@ import org.example.backend.mapper.OrderMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -65,31 +71,25 @@ public class TradeService {
             long quantity,
             String idempotencyKey) {
 
-        Account account = requireActiveAccount(accountId);
+        requireActiveAccount(accountId);
         Instrument instrument = requireTradableInstrument(symbol);
         ensureIdempotencyKeyUnused(idempotencyKey);
 
-        BigDecimal orderValue = calculateOrderValue(price, quantity);
-        Holding sellHolding = validateOrderAndLoadSellHolding(
-                accountId,
-                symbol,
-                side,
-                quantity,
-                account,
-                instrument,
-                orderValue);
-
-        applyCashChange(account, side, orderValue);
-        updateAccountBalanceOrThrow(accountId, account);
-        persistHoldingChange(accountId, side, quantity, price, instrument, sellHolding);
-
-        Order order = createAndPersistFilledOrder(
+        Order order = createAndPersistNewOrder(
                 accountId,
                 instrument,
                 side,
                 quantity,
-                price,
                 idempotencyKey);
+
+        orderPlacedAfterCommitListener.onOrderPlaced(
+                new OrderPlacedEvent(
+                        order.getOrderId(),
+                        order.getAccountId(),
+                        symbol,
+                        order.getOrderSide(),
+                        order.getQuantity(),
+                        order.getReceivedAt()));
 
         return new OrderResponse(
                 String.valueOf(order.getOrderId()),
@@ -314,12 +314,11 @@ public class TradeService {
     // -----------------------------------------------------
     // Create order
     // -----------------------------------------------------
-    private Order createAndPersistFilledOrder(
+    private Order createAndPersistNewOrder(
             long accountId,
             Instrument instrument,
             OrderSide side,
             long quantity,
-            BigDecimal price,
             String idempotencyKey) {
 
         long orderId = orderMapper.nextOrderId();
@@ -337,7 +336,6 @@ public class TradeService {
                 (int) accountId,
                 instrument.getInstrumentId());
 
-        order.fill();
         orderMapper.insertOrder(order);
         return order;
     }

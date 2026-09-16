@@ -43,7 +43,6 @@ class OrderPlacementPersistenceCharacterizationTest extends PostgresIntegrationS
                 "ACME",
                 OrderSide.BUY,
                 100L,
-                new BigDecimal("50.00"),
                 "idem-success-1");
 
         assertAll(

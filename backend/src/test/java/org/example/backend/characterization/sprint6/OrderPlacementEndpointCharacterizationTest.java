@@ -50,29 +50,27 @@ class OrderPlacementEndpointCharacterizationTest {
                 anyString(),
                 any(OrderSide.class),
                 anyLong(),
-                any(BigDecimal.class),
                 anyString()))
                 .thenReturn(new OrderResponse(
                         "9001",
-                        OrderStatus.FILLED,
+                        OrderStatus.NEW,
                         "Order placed successfully",
                         "ACME",
                         OrderSide.BUY,
                         100,
-                        new BigDecimal("50.0000")));
+                        null));
 
         mockMvc.perform(post("/api/v1/orders")
                         .requestAttr(AuthContext.ACCOUNT_ID_ATTRIBUTE, 1L)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(placeOrderJson(1, "ACME", "BUY", 100, "50.00", "idem-commit")))
+                        .content(placeOrderJson(1, "ACME", "BUY", 100, "idem-commit")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.orderId").value("9001"))
-                .andExpect(jsonPath("$.status").value("FILLED"))
+                .andExpect(jsonPath("$.status").value("NEW"))
                 .andExpect(jsonPath("$.message").value("Order placed successfully"))
                 .andExpect(jsonPath("$.symbol").value("ACME"))
                 .andExpect(jsonPath("$.side").value("BUY"))
-                .andExpect(jsonPath("$.quantity").value(100))
-                .andExpect(jsonPath("$.price").value(50.0000));
+                .andExpect(jsonPath("$.quantity").value(100));
     }
 
     @Test
@@ -82,14 +80,13 @@ class OrderPlacementEndpointCharacterizationTest {
                 anyString(),
                 any(OrderSide.class),
                 anyLong(),
-                any(BigDecimal.class),
                 anyString()))
                 .thenThrow(new DuplicateOrderException("idem-duplicate"));
 
         mockMvc.perform(post("/api/v1/orders")
                         .requestAttr(AuthContext.ACCOUNT_ID_ATTRIBUTE, 1L)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(placeOrderJson(1, "ACME", "BUY", 100, "50.00", "idem-duplicate")))
+                        .content(placeOrderJson(1, "ACME", "BUY", 100, "idem-duplicate")))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("ORD-409"))
                 .andExpect(jsonPath("$.message").value("Duplicate order"));
@@ -102,7 +99,6 @@ class OrderPlacementEndpointCharacterizationTest {
                 anyString(),
                 any(OrderSide.class),
                 anyLong(),
-                any(BigDecimal.class),
                 anyString()))
                 .thenThrow(new InsufficientFundsException(
                         1L,
@@ -112,7 +108,7 @@ class OrderPlacementEndpointCharacterizationTest {
         mockMvc.perform(post("/api/v1/orders")
                         .requestAttr(AuthContext.ACCOUNT_ID_ATTRIBUTE, 1L)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(placeOrderJson(1, "ACME", "BUY", 100, "50.00", "idem-insufficient")))
+                        .content(placeOrderJson(1, "ACME", "BUY", 100, "idem-insufficient")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("ORD-400"))
                 .andExpect(jsonPath("$.message").value("Insufficient funds"));
@@ -125,14 +121,13 @@ class OrderPlacementEndpointCharacterizationTest {
                 anyString(),
                 any(OrderSide.class),
                 anyLong(),
-                any(BigDecimal.class),
                 anyString()))
                 .thenThrow(new InstrumentNotFoundException("UNKNOWN"));
 
         mockMvc.perform(post("/api/v1/orders")
                         .requestAttr(AuthContext.ACCOUNT_ID_ATTRIBUTE, 1L)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(placeOrderJson(1, "UNKNOWN", "BUY", 100, "50.00", "idem-unknown")))
+                        .content(placeOrderJson(1, "UNKNOWN", "BUY", 100, "idem-unknown")))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.errorCode").value("INS-404"))
                 .andExpect(jsonPath("$.message").value("Instrument not found"));
@@ -145,14 +140,13 @@ class OrderPlacementEndpointCharacterizationTest {
                 anyString(),
                 any(OrderSide.class),
                 anyLong(),
-                any(BigDecimal.class),
                 anyString()))
                 .thenThrow(new AccountNotActiveException(1L, AccountStatus.SUSPENDED));
 
         mockMvc.perform(post("/api/v1/orders")
                         .requestAttr(AuthContext.ACCOUNT_ID_ATTRIBUTE, 1L)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(placeOrderJson(1, "ACME", "BUY", 100, "50.00", "idem-inactive")))
+                        .content(placeOrderJson(1, "ACME", "BUY", 100, "idem-inactive")))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.errorCode").value("ACC-403"))
                 .andExpect(jsonPath("$.message").value("Account not active"));
@@ -163,7 +157,6 @@ class OrderPlacementEndpointCharacterizationTest {
             String symbol,
             String side,
             int quantity,
-            String price,
             String idempotencyKey) {
 
         return """
@@ -172,7 +165,6 @@ class OrderPlacementEndpointCharacterizationTest {
                   "symbol": "%s",
                   "side": "%s",
                   "quantity": %d,
-                  "price": %s,
                   "idempotencyKey": "%s"
                 }
                 """.formatted(
@@ -180,7 +172,6 @@ class OrderPlacementEndpointCharacterizationTest {
                 symbol,
                 side,
                 quantity,
-                price,
                 idempotencyKey);
     }
 }

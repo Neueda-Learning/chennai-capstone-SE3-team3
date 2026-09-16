@@ -5,6 +5,8 @@ import org.example.backend.entities.Account;
 import org.example.backend.entities.Holding;
 import org.example.backend.entities.Instrument;
 import org.example.backend.entities.Order;
+import org.example.backend.events.OrderPlacedAfterCommitListener;
+import org.example.backend.events.OrderPlacedEvent;
 import org.example.backend.enums.AccountStatus;
 import org.example.backend.enums.InstrumentAssetClass;
 import org.example.backend.enums.InstrumentStatus;
@@ -36,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -58,6 +61,9 @@ class OrderPlacementServiceCharacterizationTest {
     @Mock
     private OrderMapper orderMapper;
 
+    @Mock
+    private OrderPlacedAfterCommitListener orderPlacedAfterCommitListener;
+
     private TradeService tradeService;
 
     @BeforeEach
@@ -66,7 +72,8 @@ class OrderPlacementServiceCharacterizationTest {
                 accountMapper,
                 holdingMapper,
                 instrumentMapper,
-                orderMapper);
+                orderMapper,
+                orderPlacedAfterCommitListener);
     }
 
     @Test
@@ -80,17 +87,6 @@ class OrderPlacementServiceCharacterizationTest {
                 .thenReturn(Optional.of(instrument));
         when(orderMapper.selectOrderByIdempotencyKey("idem-commit"))
                 .thenReturn(Optional.empty());
-        when(accountMapper.updateAccountBalanceWithVersion(
-                ACCOUNT_ID,
-                new BigDecimal("20000.0000"),
-                3L))
-                .thenReturn(1);
-        when(holdingMapper.selectHoldingByAccountAndInstrument(
-                ACCOUNT_ID,
-                INSTRUMENT_ID))
-                .thenReturn(Optional.empty());
-        when(holdingMapper.nextHoldingId())
-                .thenReturn(5001L);
         when(orderMapper.nextOrderId())
                 .thenReturn(9001L);
 
@@ -99,41 +95,35 @@ class OrderPlacementServiceCharacterizationTest {
                 "ACME",
                 OrderSide.BUY,
                 100L,
-                new BigDecimal("50.00"),
                 "idem-commit");
 
-        ArgumentCaptor<Holding> holdingCaptor =
-                ArgumentCaptor.forClass(Holding.class);
         ArgumentCaptor<Order> orderCaptor =
                 ArgumentCaptor.forClass(Order.class);
 
-        verify(holdingMapper).insertHolding(holdingCaptor.capture());
         verify(orderMapper).insertOrder(orderCaptor.capture());
+        verify(orderPlacedAfterCommitListener)
+                .onOrderPlaced(any(OrderPlacedEvent.class));
+        verify(accountMapper, never()).updateAccountBalanceWithVersion(any(Integer.class), any(BigDecimal.class), any(Long.class));
+        verify(holdingMapper, never()).insertHolding(any(Holding.class));
 
-        Holding persistedHolding = holdingCaptor.getValue();
         Order persistedOrder = orderCaptor.getValue();
 
         assertAll(
                 () -> assertEquals("9001", response.orderId()),
-                () -> assertEquals(OrderStatus.FILLED, response.status()),
+                () -> assertEquals(OrderStatus.NEW, response.status()),
                 () -> assertEquals("Order placed successfully", response.message()),
                 () -> assertEquals("ACME", response.symbol()),
                 () -> assertEquals(OrderSide.BUY, response.side()),
                 () -> assertEquals(100, response.quantity()),
-                () -> assertEquals(new BigDecimal("50.0000"), response.price()),
-                () -> assertEquals(5001L, persistedHolding.getHoldingId()),
-                () -> assertEquals(100L, persistedHolding.getQuantity()),
-                () -> assertEquals(new BigDecimal("50.0000"), persistedHolding.getPurchasePrice()),
-                () -> assertEquals(ACCOUNT_ID, persistedHolding.getAccountId()),
-                () -> assertEquals(INSTRUMENT_ID, persistedHolding.getInstrumentId()),
+                () -> assertEquals(null, response.price()),
                 () -> assertEquals(9001L, persistedOrder.getOrderId()),
                 () -> assertEquals("idem-commit", persistedOrder.getIdempotencyKey()),
-                () -> assertEquals(OrderStatus.FILLED, persistedOrder.getOrderStatus()),
+                () -> assertEquals(OrderStatus.NEW, persistedOrder.getOrderStatus()),
                 () -> assertNotNull(persistedOrder.getReceivedAt()),
                 () -> assertEquals(OrderSide.BUY, persistedOrder.getOrderSide()),
-                () -> assertEquals(new BigDecimal("50.0000"), persistedOrder.getPrice()),
+                () -> assertEquals(null, persistedOrder.getPrice()),
                 () -> assertEquals(100L, persistedOrder.getQuantity()),
-                () -> assertNotNull(persistedOrder.getTransactionDate()),
+                () -> assertEquals(null, persistedOrder.getTransactionDate()),
                 () -> assertEquals(ACCOUNT_ID, persistedOrder.getAccountId()),
                 () -> assertEquals(INSTRUMENT_ID, persistedOrder.getInstrumentId()));
     }
@@ -157,7 +147,6 @@ class OrderPlacementServiceCharacterizationTest {
                         "ACME",
                         OrderSide.BUY,
                         100L,
-                        new BigDecimal("50.00"),
                         "idem-duplicate"));
 
         assertAll(
@@ -168,10 +157,11 @@ class OrderPlacementServiceCharacterizationTest {
         verify(accountMapper, never()).updateAccountBalanceWithVersion(any(Integer.class), any(BigDecimal.class), any(Long.class));
         verify(holdingMapper, never()).insertHolding(any(Holding.class));
         verify(orderMapper, never()).insertOrder(any(Order.class));
+        verify(orderPlacedAfterCommitListener, never()).onOrderPlaced(any(OrderPlacedEvent.class));
     }
 
     @Test
-    void unaffordableBuyReturnsCurrentOrd400AndDoesNotWrite() {
+    void acceptedBuyNoLongerPerformsSynchronousAffordabilityCheck() {
         Account account = activeAccount(new BigDecimal("4999.99"), 3L);
         Instrument instrument = tradableInstrument();
 
@@ -181,27 +171,25 @@ class OrderPlacementServiceCharacterizationTest {
                 .thenReturn(Optional.of(instrument));
         when(orderMapper.selectOrderByIdempotencyKey("idem-insufficient"))
                 .thenReturn(Optional.empty());
+        when(orderMapper.nextOrderId())
+                .thenReturn(9100L);
 
-        InsufficientFundsException exception = assertThrows(
-                InsufficientFundsException.class,
-                () -> tradeService.placeOrder(
-                        ACCOUNT_ID,
-                        "ACME",
-                        OrderSide.BUY,
-                        100L,
-                        new BigDecimal("50.00"),
-                        "idem-insufficient"));
+        OrderResponse response = tradeService.placeOrder(
+                ACCOUNT_ID,
+                "ACME",
+                OrderSide.BUY,
+                100L,
+                "idem-insufficient");
 
         assertAll(
-                () -> assertEquals("ORD-400", exception.getErrorCode()),
-                () -> assertEquals("Insufficient funds", exception.getMessage()),
-                () -> assertEquals(ACCOUNT_ID, exception.getAccountId()),
-                () -> assertEquals(new BigDecimal("5000.00"), exception.getRequired()),
-                () -> assertEquals(new BigDecimal("4999.9900"), exception.getAvailable()));
+                () -> assertEquals("9100", response.orderId()),
+                () -> assertEquals(OrderStatus.NEW, response.status()),
+                () -> assertEquals("Order placed successfully", response.message()));
 
         verify(accountMapper, never()).updateAccountBalanceWithVersion(any(Integer.class), any(BigDecimal.class), any(Long.class));
         verify(holdingMapper, never()).insertHolding(any(Holding.class));
-        verify(orderMapper, never()).insertOrder(any(Order.class));
+        verify(orderMapper).insertOrder(any(Order.class));
+        verify(orderPlacedAfterCommitListener).onOrderPlaced(any(OrderPlacedEvent.class));
     }
 
     @Test
@@ -220,7 +208,6 @@ class OrderPlacementServiceCharacterizationTest {
                         "UNKNOWN",
                         OrderSide.BUY,
                         100L,
-                        new BigDecimal("50.00"),
                         "idem-unknown"));
 
         assertAll(
@@ -231,6 +218,7 @@ class OrderPlacementServiceCharacterizationTest {
         verify(accountMapper, never()).updateAccountBalanceWithVersion(any(Integer.class), any(BigDecimal.class), any(Long.class));
         verify(holdingMapper, never()).insertHolding(any(Holding.class));
         verify(orderMapper, never()).insertOrder(any(Order.class));
+        verify(orderPlacedAfterCommitListener, never()).onOrderPlaced(any(OrderPlacedEvent.class));
     }
 
     @Test
@@ -258,7 +246,6 @@ class OrderPlacementServiceCharacterizationTest {
                         "ACME",
                         OrderSide.BUY,
                         100L,
-                        new BigDecimal("50.00"),
                         "idem-inactive"));
 
         assertAll(
@@ -270,6 +257,7 @@ class OrderPlacementServiceCharacterizationTest {
         verify(accountMapper, never()).updateAccountBalanceWithVersion(any(Integer.class), any(BigDecimal.class), any(Long.class));
         verify(holdingMapper, never()).insertHolding(any(Holding.class));
         verify(orderMapper, never()).insertOrder(any(Order.class));
+        verify(orderPlacedAfterCommitListener, never()).onOrderPlaced(any(OrderPlacedEvent.class));
     }
 
     private static Account activeAccount(
