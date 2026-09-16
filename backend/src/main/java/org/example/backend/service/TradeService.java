@@ -21,7 +21,6 @@ import org.example.backend.exceptions.InstrumentNotFoundException;
 import org.example.backend.exceptions.OptimisticLockException;
 import org.example.backend.exceptions.OrderNotFoundException;
 import org.example.backend.exceptions.OrderNotCancellableException;
-import org.example.backend.exceptions.OrderNotFoundException;
 import org.example.backend.mapper.AccountMapper;
 import org.example.backend.mapper.HoldingMapper;
 import org.example.backend.mapper.InstrumentMapper;
@@ -68,6 +67,43 @@ public class TradeService {
             BigDecimal price,
             String idempotencyKey) {
 
+        Account account = requireActiveAccount(accountId);
+        Instrument instrument = requireTradableInstrument(symbol);
+        ensureIdempotencyKeyUnused(idempotencyKey);
+
+        BigDecimal orderValue = calculateOrderValue(price, quantity);
+        Holding sellHolding = validateOrderAndLoadSellHolding(
+                accountId,
+                symbol,
+                side,
+                quantity,
+                account,
+                instrument,
+                orderValue);
+
+        applyCashChange(account, side, orderValue);
+        updateAccountBalanceOrThrow(accountId, account);
+        persistHoldingChange(accountId, side, quantity, price, instrument, sellHolding);
+
+        Order order = createAndPersistFilledOrder(
+                accountId,
+                instrument,
+                side,
+                quantity,
+                price,
+                idempotencyKey);
+
+        return new OrderResponse(
+                String.valueOf(order.getOrderId()),
+                order.getOrderStatus(),
+                "Order placed successfully",
+                symbol,
+                order.getOrderSide(),
+                (int) order.getQuantity(),
+                order.getPrice());
+    }
+
+    private Account requireActiveAccount(long accountId) {
         Account account = accountMapper
                 .selectAccountById((int) accountId)
                 .orElseThrow(() ->
@@ -79,6 +115,10 @@ public class TradeService {
                     account.getAccountStatus());
         }
 
+        return account;
+    }
+
+    private Instrument requireTradableInstrument(String symbol) {
         Instrument instrument = instrumentMapper
                 .selectInstrumentByTicker(symbol)
                 .orElseThrow(() ->
@@ -88,150 +128,201 @@ public class TradeService {
             throw new InstrumentNotFoundException(symbol);
         }
 
+        return instrument;
+    }
+
+    private void ensureIdempotencyKeyUnused(String idempotencyKey) {
         if (orderMapper
                 .selectOrderByIdempotencyKey(idempotencyKey)
                 .isPresent()) {
 
             throw new DuplicateOrderException(idempotencyKey);
         }
+    }
 
-        BigDecimal orderValue = price
+    private static BigDecimal calculateOrderValue(
+            BigDecimal price,
+            long quantity) {
+
+        return price
                 .multiply(BigDecimal.valueOf(quantity))
                 .setScale(2, RoundingMode.HALF_UP);
+    }
 
-        Holding holding = null;
+    private Holding validateOrderAndLoadSellHolding(
+            long accountId,
+            String symbol,
+            OrderSide side,
+            long quantity,
+            Account account,
+            Instrument instrument,
+            BigDecimal orderValue) {
 
         if (side == OrderSide.BUY) {
-
-            if (!account.canAfford(orderValue)) {
-                throw new InsufficientFundsException(
-                        accountId,
-                        orderValue,
-                        account.getBalance());
-            }
-
-        } else {
-
-            holding = holdingMapper
-                    .selectHoldingByAccountAndInstrument(
-                            (int) accountId,
-                            instrument.getInstrumentId())
-                    .orElse(null);
-
-            long availableQuantity =
-                    holding == null
-                            ? 0
-                            : holding.getQuantity();
-
-            if (availableQuantity < quantity) {
-                throw new InsufficientHoldingsException(
-                        accountId,
-                        symbol,
-                        quantity,
-                        availableQuantity);
-            }
+            assertSufficientFunds(accountId, account, orderValue);
+            return null;
         }
 
-        // -----------------------------------------------------
-        // Change account in memory
-        // -----------------------------------------------------
+        return requireSufficientHolding(
+                accountId,
+                symbol,
+                quantity,
+                instrument.getInstrumentId());
+    }
+
+    private void assertSufficientFunds(
+            long accountId,
+            Account account,
+            BigDecimal orderValue) {
+
+        if (!account.canAfford(orderValue)) {
+            throw new InsufficientFundsException(
+                    accountId,
+                    orderValue,
+                    account.getBalance());
+        }
+    }
+
+    private Holding requireSufficientHolding(
+            long accountId,
+            String symbol,
+            long quantity,
+            int instrumentId) {
+
+        Holding holding = holdingMapper
+                .selectHoldingByAccountAndInstrument(
+                        (int) accountId,
+                        instrumentId)
+                .orElse(null);
+
+        long availableQuantity =
+                holding == null
+                        ? 0
+                        : holding.getQuantity();
+
+        if (availableQuantity < quantity) {
+            throw new InsufficientHoldingsException(
+                    accountId,
+                    symbol,
+                    quantity,
+                    availableQuantity);
+        }
+
+        return holding;
+    }
+
+    private static void applyCashChange(
+            Account account,
+            OrderSide side,
+            BigDecimal orderValue) {
 
         if (side == OrderSide.BUY) {
             account.debit(orderValue);
         } else {
             account.credit(orderValue);
         }
+    }
 
-        // -----------------------------------------------------
-        // Story 5 - optimistic locking
-        // -----------------------------------------------------
+    private void updateAccountBalanceOrThrow(
+            long accountId,
+            Account account) {
 
-        int affectedRows =
-                accountMapper.updateAccountBalanceWithVersion(
-                        (int) accountId,
-                        account.getBalance(),
-                        account.getVersion());
+        int affectedRows = accountMapper.updateAccountBalanceWithVersion(
+                (int) accountId,
+                account.getBalance(),
+                account.getVersion());
 
         if (affectedRows == 0) {
             throw new OptimisticLockException();
         }
+    }
 
-        // -----------------------------------------------------
-        // Update holding
-        // -----------------------------------------------------
+    private void persistHoldingChange(
+            long accountId,
+            OrderSide side,
+            long quantity,
+            BigDecimal price,
+            Instrument instrument,
+            Holding sellHolding) {
 
         if (side == OrderSide.BUY) {
-
-            Holding existingHolding =
-                    holdingMapper
-                            .selectHoldingByAccountAndInstrument(
-                                    (int) accountId,
-                                    instrument.getInstrumentId())
-                            .orElse(null);
-
-            if (existingHolding == null) {
-
-                long holdingId =
-                        holdingMapper.nextHoldingId();
-
-                Holding newHolding = new Holding(
-                        holdingId,
-                        quantity,
-                        price,
-                        (int) accountId,
-                        instrument.getInstrumentId());
-
-                holdingMapper.insertHolding(newHolding);
-
-            } else {
-
-                long oldQuantity =
-                        existingHolding.getQuantity();
-
-                long newQuantity =
-                        oldQuantity + quantity;
-
-                BigDecimal oldValue =
-                        existingHolding.getPurchasePrice()
-                                .multiply(
-                                        BigDecimal.valueOf(oldQuantity));
-
-                BigDecimal newValue =
-                        price.multiply(
-                                BigDecimal.valueOf(quantity));
-
-                BigDecimal averagePrice =
-                        oldValue
-                                .add(newValue)
-                                .divide(
-                                        BigDecimal.valueOf(newQuantity),
-                                        2,
-                                        RoundingMode.HALF_UP);
-
-                holdingMapper.updateHoldingQuantityAndPrice(
-                        existingHolding.getHoldingId(),
-                        newQuantity,
-                        averagePrice);
-            }
-
-        } else {
-
-            long remainingQuantity =
-                    holding.getQuantity() - quantity;
-
-            holdingMapper.updateHoldingQuantity(
-                    holding.getHoldingId(),
-                    remainingQuantity);
+            upsertBuyHolding(accountId, quantity, price, instrument);
+            return;
         }
 
-        // -----------------------------------------------------
-        // Create order
-        // -----------------------------------------------------
+        long remainingQuantity = sellHolding.getQuantity() - quantity;
+        holdingMapper.updateHoldingQuantity(
+                sellHolding.getHoldingId(),
+                remainingQuantity);
+    }
+
+    private void upsertBuyHolding(
+            long accountId,
+            long quantity,
+            BigDecimal price,
+            Instrument instrument) {
+
+        Holding existingHolding = holdingMapper
+                .selectHoldingByAccountAndInstrument(
+                        (int) accountId,
+                        instrument.getInstrumentId())
+                .orElse(null);
+
+        if (existingHolding == null) {
+            insertNewHolding(accountId, quantity, price, instrument);
+            return;
+        }
+
+        long oldQuantity = existingHolding.getQuantity();
+        long newQuantity = oldQuantity + quantity;
+
+        BigDecimal oldValue = existingHolding.getPurchasePrice()
+                .multiply(BigDecimal.valueOf(oldQuantity));
+
+        BigDecimal newValue = price
+                .multiply(BigDecimal.valueOf(quantity));
+
+        BigDecimal averagePrice = oldValue
+                .add(newValue)
+                .divide(
+                        BigDecimal.valueOf(newQuantity),
+                        2,
+                        RoundingMode.HALF_UP);
+
+        holdingMapper.updateHoldingQuantityAndPrice(
+                existingHolding.getHoldingId(),
+                newQuantity,
+                averagePrice);
+    }
+
+    private void insertNewHolding(
+            long accountId,
+            long quantity,
+            BigDecimal price,
+            Instrument instrument) {
+
+        long holdingId = holdingMapper.nextHoldingId();
+
+        Holding newHolding = new Holding(
+                holdingId,
+                quantity,
+                price,
+                (int) accountId,
+                instrument.getInstrumentId());
+
+        holdingMapper.insertHolding(newHolding);
+    }
+
+    private Order createAndPersistFilledOrder(
+            long accountId,
+            Instrument instrument,
+            OrderSide side,
+            long quantity,
+            BigDecimal price,
+            String idempotencyKey) {
 
         long orderId = orderMapper.nextOrderId();
-
-        OffsetDateTime receivedAt =
-                OffsetDateTime.now();
+        OffsetDateTime receivedAt = OffsetDateTime.now();
 
         Order order = new Order(
                 orderId,
@@ -246,17 +337,8 @@ public class TradeService {
                 instrument.getInstrumentId());
 
         order.fill();
-
         orderMapper.insertOrder(order);
-
-        return new OrderResponse(
-                String.valueOf(order.getOrderId()),
-                order.getOrderStatus(),
-                "Order placed successfully",
-                symbol,
-                order.getOrderSide(),
-                (int) order.getQuantity(),
-                order.getPrice());
+        return order;
     }
 
     // =========================================================
