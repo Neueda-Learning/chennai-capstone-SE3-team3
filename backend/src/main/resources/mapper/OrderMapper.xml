@@ -388,8 +388,8 @@
 
         /*
         * Current DB has no executed_price column.
-        * Since Sprint 5 fills synchronously at the submitted price,
-        * use price for FILLED orders and NULL otherwise.
+        * Executor sets price when the order is filled,
+        * so use price for FILLED orders and NULL otherwise.
         */
         CASE
         WHEN o.order_status = 'FILLED'

@@ -1,0 +1,27 @@
+package org.example.backend.events;
+
+import org.example.backend.enums.OrderSide;
+
+import java.time.OffsetDateTime;
+
+public record OrderPlacedMessage(
+        String eventType,
+        long orderId,
+        int accountId,
+        String symbol,
+        OrderSide side,
+        long quantity,
+        OffsetDateTime receivedAt) {
+
+    public static OrderPlacedMessage from(OrderPlacedEvent event) {
+        return new OrderPlacedMessage(
+                "ORDER_PLACED",
+                event.orderId(),
+                event.accountId(),
+                event.symbol(),
+                event.side(),
+                event.quantity(),
+                event.receivedAt());
+    }
+}
+

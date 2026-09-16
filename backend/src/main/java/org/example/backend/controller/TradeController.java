@@ -62,7 +62,6 @@ public class TradeController {
                 request.symbol(),
                 request.side(),
                 request.quantity(),
-                request.price(),
                 request.idempotencyKey());
     }
 

@@ -3,6 +3,7 @@ package org.example.backend.integration;
 import org.example.backend.dto.OrderResponse;
 import org.example.backend.enums.OrderSide;
 import org.example.backend.enums.OrderStatus;
+import org.example.backend.exceptions.DuplicateOrderException;
 import org.example.backend.service.TradeService;
 import org.example.backend.support.PostgresIntegrationSupport;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,7 +11,6 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
@@ -44,45 +44,44 @@ class TradeServiceTransactionalIntegrationTest extends PostgresIntegrationSuppor
                 "ACME",
                 OrderSide.BUY,
                 100L,
-                new BigDecimal("50.00"),
                 "idem-success-1");
 
-        assertEquals(OrderStatus.FILLED, response.status());
-        assertEquals(new BigDecimal("20000.00"), accountBalance(1));
-        assertEquals(new BigDecimal("20000.00"), purchasingPower(1));
-        assertEquals(2L, accountVersion(1));
-        assertEquals(1, holdingsCountFor(1));
-        assertEquals(100L, holdingQuantity(1, 101));
+        assertEquals(OrderStatus.NEW, response.status());
+        assertEquals(new BigDecimal("25000.00"), accountBalance(1));
+        assertEquals(new BigDecimal("25000.00"), purchasingPower(1));
+        assertEquals(1L, accountVersion(1));
+        assertEquals(0, holdingsCountFor(1));
         assertEquals(1, ordersCountFor(1));
-        assertEquals("FILLED", orderStatus("idem-success-1"));
+        assertEquals("NEW", orderStatus("idem-success-1"));
     }
 
     @Test
-    void failedOrderRollsBackWithNoPartialWrite() {
+    void duplicateIdempotencyKeyRollsBackWithNoPartialWrite() {
         seedClient(1, "Priya Menon");
-        seedClient(2, "Arjun Rao");
         seedAccount(1, "ACC-000001", new BigDecimal("25000.00"), 1L, 1);
-        seedAccount(2, "ACC-000002", new BigDecimal("1000.00"), 1L, 2);
         seedInstrument(101, "ACME", "Acme Corp");
-        jdbcTemplate.update(
-                "INSERT INTO holdings (holding_id, quantity, purchase_price, account_id, instrument_id) VALUES (1, 10, 10.00, 2, 101)");
-        jdbcTemplate.execute("SELECT setval(pg_get_serial_sequence('holdings', 'holding_id'), 1, false)");
+
+        tradeService.placeOrder(
+                1L,
+                "ACME",
+                OrderSide.BUY,
+                100L,
+                "idem-rollback-1");
 
         assertThrows(
-                DataIntegrityViolationException.class,
+                DuplicateOrderException.class,
                 () -> tradeService.placeOrder(
                         1L,
                         "ACME",
                         OrderSide.BUY,
                         100L,
-                        new BigDecimal("50.00"),
                         "idem-rollback-1"));
 
         assertEquals(new BigDecimal("25000.00"), accountBalance(1));
         assertEquals(new BigDecimal("25000.00"), purchasingPower(1));
         assertEquals(1L, accountVersion(1));
         assertEquals(0, holdingsCountFor(1));
-        assertEquals(0, ordersCountFor(1));
+        assertEquals(1, ordersCountFor(1));
     }
 
     private void seedClient(int clientId, String clientName) {
@@ -173,14 +172,6 @@ class TradeServiceTransactionalIntegrationTest extends PostgresIntegrationSuppor
         return count == null ? -1 : count;
     }
 
-    private long holdingQuantity(int accountId, int instrumentId) {
-        Long quantity = jdbcTemplate.queryForObject(
-                "SELECT quantity FROM holdings WHERE account_id = ? AND instrument_id = ?",
-                Long.class,
-                accountId,
-                instrumentId);
-        return quantity == null ? -1L : quantity;
-    }
 
     private int ordersCountFor(int accountId) {
         Integer count = jdbcTemplate.queryForObject(

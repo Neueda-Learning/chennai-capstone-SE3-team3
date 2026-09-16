@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS orders (
     order_status VARCHAR(20) NOT NULL,
     received_at TIMESTAMPTZ NOT NULL,
     order_type VARCHAR(10) NOT NULL,
-    price NUMERIC(19,2) NOT NULL,
+    price NUMERIC(19,2) NULL,
     quantity BIGINT NOT NULL,
     transaction_date TIMESTAMPTZ NULL,
     account_id INTEGER NOT NULL REFERENCES account(account_id),

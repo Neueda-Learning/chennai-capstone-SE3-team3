@@ -30,7 +30,6 @@ public class Order {
     @NotNull
     private final OrderSide orderSide;
 
-    @NotNull
     @DecimalMin(value = "0.00", inclusive = false)
     @Digits(integer = 17, fraction = 4)
     private final BigDecimal price;
@@ -90,19 +89,17 @@ public class Order {
                     "Order side is required");
         }
 
-        if (price == null) {
-            throw new IllegalArgumentException(
-                    "Price is required");
-        }
+        if (price != null) {
 
-        if (price.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException(
-                    "Price must be greater than zero");
-        }
+            if (price.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException(
+                        "Price must be greater than zero");
+            }
 
-        if (price.scale() > 4) {
-            throw new IllegalArgumentException(
-                "Price cannot have more than four decimal places");
+            if (price.scale() > 4) {
+                throw new IllegalArgumentException(
+                        "Price cannot have more than four decimal places");
+            }
         }
 
         if (quantity <= 0) {
@@ -125,7 +122,9 @@ public class Order {
         this.orderStatus = orderStatus;
         this.receivedAt = receivedAt;
         this.orderSide = orderSide;
-        this.price = price.setScale(4);
+        this.price = price == null
+                ? null
+                : price.setScale(4);
         this.quantity = quantity;
         this.transactionDate = transactionDate;
         this.accountId = accountId;
