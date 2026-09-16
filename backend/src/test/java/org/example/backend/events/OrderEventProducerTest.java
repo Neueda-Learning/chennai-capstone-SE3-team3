@@ -1,5 +1,6 @@
 package org.example.backend.events;
 
+import org.example.backend.dto.kafka.KafkaEventEnvelope;
 import org.example.backend.enums.OrderSide;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,6 +12,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import java.time.OffsetDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
@@ -18,11 +20,11 @@ import static org.mockito.Mockito.verify;
 class OrderEventProducerTest {
 
     @Mock
-    private KafkaTemplate<String, OrderPlacedMessage> kafkaTemplate;
+    private KafkaTemplate<String, KafkaEventEnvelope<OrderPlacedMessage>> kafkaTemplate;
 
     @Test
     void publishesOrderPlacedToOrdersTopicKeyedByAccount() {
-        OrderEventProducer producer = new OrderEventProducer(kafkaTemplate, "orders");
+        OrderEventProducer producer = new OrderEventProducer(kafkaTemplate, "orders", "trade-api", 1);
 
         OrderPlacedEvent event = new OrderPlacedEvent(
                 9001L,
@@ -34,17 +36,24 @@ class OrderEventProducerTest {
 
         producer.publishOrderPlaced(event);
 
-        ArgumentCaptor<OrderPlacedMessage> payloadCaptor =
-                ArgumentCaptor.forClass(OrderPlacedMessage.class);
+        ArgumentCaptor<KafkaEventEnvelope<OrderPlacedMessage>> envelopeCaptor =
+                ArgumentCaptor.forClass(KafkaEventEnvelope.class);
 
         verify(kafkaTemplate).send(
                 eq("orders"),
                 eq("1"),
-                payloadCaptor.capture());
+                envelopeCaptor.capture());
 
-        assertEquals("ORDER_PLACED", payloadCaptor.getValue().eventType());
-        assertEquals(9001L, payloadCaptor.getValue().orderId());
-        assertEquals(1, payloadCaptor.getValue().accountId());
+        KafkaEventEnvelope<OrderPlacedMessage> envelope = envelopeCaptor.getValue();
+        assertNotNull(envelope.getEventId());
+        assertNotNull(envelope.getEventTime());
+        assertEquals("ORDER_PLACED", envelope.getEventType());
+        assertEquals("trade-api", envelope.getSource());
+        assertEquals(1, envelope.getSchemaVersion());
+
+        OrderPlacedMessage payload = envelope.getPayload();
+        assertEquals(9001L, payload.orderId());
+        assertEquals(1, payload.accountId());
     }
 }
 

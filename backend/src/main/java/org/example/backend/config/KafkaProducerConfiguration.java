@@ -1,5 +1,6 @@
 package org.example.backend.config;
 
+import org.example.backend.dto.kafka.KafkaEventEnvelope;
 import org.example.backend.events.OrderPlacedMessage;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -18,7 +19,7 @@ import java.util.Map;
 public class KafkaProducerConfiguration {
 
     @Bean
-    public ProducerFactory<String, OrderPlacedMessage> orderPlacedProducerFactory(
+    public ProducerFactory<String, KafkaEventEnvelope<OrderPlacedMessage>> orderPlacedProducerFactory(
             @Value("${spring.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers,
             @Value("${spring.kafka.producer.acks:all}") String acks,
             @Value("${spring.kafka.producer.retries:2147483647}") int retries,
@@ -38,8 +39,8 @@ public class KafkaProducerConfiguration {
     }
 
     @Bean
-    public KafkaTemplate<String, OrderPlacedMessage> orderPlacedKafkaTemplate(
-            ProducerFactory<String, OrderPlacedMessage> orderPlacedProducerFactory) {
+    public KafkaTemplate<String, KafkaEventEnvelope<OrderPlacedMessage>> orderPlacedKafkaTemplate(
+            ProducerFactory<String, KafkaEventEnvelope<OrderPlacedMessage>> orderPlacedProducerFactory) {
 
         return new KafkaTemplate<>(orderPlacedProducerFactory);
     }
