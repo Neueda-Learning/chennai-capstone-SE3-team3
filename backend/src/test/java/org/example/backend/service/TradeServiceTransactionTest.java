@@ -8,6 +8,7 @@ import org.example.backend.events.OrderPlacedAfterCommitListener;
 import org.example.backend.enums.AccountStatus;
 import org.example.backend.enums.InstrumentAssetClass;
 import org.example.backend.enums.InstrumentStatus;
+import org.example.backend.enums.OrderPricingType;
 import org.example.backend.enums.OrderSide;
 import org.example.backend.enums.OrderStatus;
 import org.example.backend.exceptions.AccountNotActiveException;
@@ -94,15 +95,18 @@ class TradeServiceTransactionTest {
                 ACCOUNT_ID,
                 "ACME",
                 OrderSide.BUY,
+                OrderPricingType.LIMIT,
                 100L,
+                new BigDecimal("50.00"),
                 "idem-commit");
 
         assertEquals("9001", response.orderId());
         assertEquals(OrderStatus.NEW, response.status());
         assertEquals("ACME", response.symbol());
         assertEquals(OrderSide.BUY, response.side());
+        assertEquals(OrderPricingType.LIMIT, response.orderPricingType());
         assertEquals(100, response.quantity());
-        assertNull(response.price());
+        assertEquals(new BigDecimal("50.0000"), response.price());
 
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
 
@@ -113,11 +117,45 @@ class TradeServiceTransactionTest {
                 .onOrderPlaced(any());
 
         assertEquals(OrderStatus.NEW, orderCaptor.getValue().getOrderStatus());
-        assertNull(orderCaptor.getValue().getPrice());
+        assertEquals(new BigDecimal("50.0000"), orderCaptor.getValue().getPrice());
         verify(accountMapper, never()).updateAccountBalanceWithVersion(anyInt(), any(), anyLong());
         verify(holdingMapper, never()).insertHolding(any());
         verify(holdingMapper, never()).updateHoldingQuantity(anyLong(), anyLong());
         verify(holdingMapper, never()).updateHoldingQuantityAndPrice(anyLong(), anyLong(), any());
+    }
+
+    @Test
+    void acceptedOrderWithoutLimitPriceIsWrittenAtNewAndAnswersNew() {
+        Account account = activeAccount(new BigDecimal("25000.00"), 3L);
+        Instrument instrument = tradableInstrument();
+
+        when(accountMapper.selectAccountById(ACCOUNT_ID))
+                .thenReturn(Optional.of(account));
+        when(instrumentMapper.selectInstrumentByTicker("ACME"))
+                .thenReturn(Optional.of(instrument));
+        when(orderMapper.selectOrderByIdempotencyKey("idem-market"))
+                .thenReturn(Optional.empty());
+        when(orderMapper.nextOrderId())
+                .thenReturn(9002L);
+
+        OrderResponse response = tradeService.placeOrder(
+                ACCOUNT_ID,
+                "ACME",
+                OrderSide.BUY,
+                OrderPricingType.MARKET,
+                100L,
+                null,
+                "idem-market");
+
+        assertEquals("9002", response.orderId());
+        assertEquals(OrderStatus.NEW, response.status());
+        assertEquals(OrderPricingType.MARKET, response.orderPricingType());
+        assertNull(response.price());
+
+        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
+        verify(orderMapper).insertOrder(orderCaptor.capture());
+        verify(orderPlacedAfterCommitListener).onOrderPlaced(any());
+        assertNull(orderCaptor.getValue().getPrice());
     }
 
     @Test
@@ -135,7 +173,9 @@ class TradeServiceTransactionTest {
                         ACCOUNT_ID,
                         "ACME",
                         OrderSide.BUY,
+                        OrderPricingType.LIMIT,
                         100L,
+                        new BigDecimal("50.00"),
                         "idem-invalid"));
 
         verify(orderMapper, never()).insertOrder(any(Order.class));
@@ -152,6 +192,7 @@ class TradeServiceTransactionTest {
                 OrderStatus.NEW,
                 OffsetDateTime.parse("2026-09-10T09:00:00Z"),
                 OrderSide.BUY,
+                OrderPricingType.LIMIT,
                 new BigDecimal("50.00"),
                 100L,
                 null,
@@ -171,7 +212,9 @@ class TradeServiceTransactionTest {
                         ACCOUNT_ID,
                         "ACME",
                         OrderSide.BUY,
+                        OrderPricingType.LIMIT,
                         100L,
+                        new BigDecimal("50.00"),
                         "idem-duplicate"));
 
         verify(orderMapper, never()).insertOrder(any(Order.class));
@@ -186,6 +229,7 @@ class TradeServiceTransactionTest {
                 OrderStatus.FILLED,
                 OffsetDateTime.parse("2026-09-10T09:00:00Z"),
                 OrderSide.BUY,
+                OrderPricingType.LIMIT,
                 new BigDecimal("50.00"),
                 100L,
                 OffsetDateTime.parse("2026-09-10T09:01:00Z"),
@@ -210,6 +254,7 @@ class TradeServiceTransactionTest {
                 OrderStatus.NEW,
                 OffsetDateTime.parse("2026-09-10T09:00:00Z"),
                 OrderSide.SELL,
+                OrderPricingType.LIMIT,
                 new BigDecimal("25.00"),
                 20L,
                 null,

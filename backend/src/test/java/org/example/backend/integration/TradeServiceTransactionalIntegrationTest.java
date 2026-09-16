@@ -1,6 +1,7 @@
 package org.example.backend.integration;
 
 import org.example.backend.dto.OrderResponse;
+import org.example.backend.enums.OrderPricingType;
 import org.example.backend.enums.OrderSide;
 import org.example.backend.enums.OrderStatus;
 import org.example.backend.exceptions.DuplicateOrderException;
@@ -43,7 +44,9 @@ class TradeServiceTransactionalIntegrationTest extends PostgresIntegrationSuppor
                 1L,
                 "ACME",
                 OrderSide.BUY,
+                OrderPricingType.LIMIT,
                 100L,
+                new BigDecimal("50.00"),
                 "idem-success-1");
 
         assertEquals(OrderStatus.NEW, response.status());
@@ -53,6 +56,8 @@ class TradeServiceTransactionalIntegrationTest extends PostgresIntegrationSuppor
         assertEquals(0, holdingsCountFor(1));
         assertEquals(1, ordersCountFor(1));
         assertEquals("NEW", orderStatus("idem-success-1"));
+        assertEquals("LIMIT", orderPricingType("idem-success-1"));
+        assertEquals(new BigDecimal("50.00"), orderPrice("idem-success-1"));
     }
 
     @Test
@@ -65,7 +70,9 @@ class TradeServiceTransactionalIntegrationTest extends PostgresIntegrationSuppor
                 1L,
                 "ACME",
                 OrderSide.BUY,
+                OrderPricingType.LIMIT,
                 100L,
+                new BigDecimal("50.00"),
                 "idem-rollback-1");
 
         assertThrows(
@@ -74,7 +81,9 @@ class TradeServiceTransactionalIntegrationTest extends PostgresIntegrationSuppor
                         1L,
                         "ACME",
                         OrderSide.BUY,
+                        OrderPricingType.LIMIT,
                         100L,
+                        new BigDecimal("50.00"),
                         "idem-rollback-1"));
 
         assertEquals(new BigDecimal("25000.00"), accountBalance(1));
@@ -185,6 +194,20 @@ class TradeServiceTransactionalIntegrationTest extends PostgresIntegrationSuppor
         return jdbcTemplate.queryForObject(
                 "SELECT order_status FROM orders WHERE idempotency_key = ?",
                 String.class,
+                idempotencyKey);
+    }
+
+    private String orderPricingType(String idempotencyKey) {
+        return jdbcTemplate.queryForObject(
+                "SELECT pricing_type FROM orders WHERE idempotency_key = ?",
+                String.class,
+                idempotencyKey);
+    }
+
+    private BigDecimal orderPrice(String idempotencyKey) {
+        return jdbcTemplate.queryForObject(
+                "SELECT price FROM orders WHERE idempotency_key = ?",
+                BigDecimal.class,
                 idempotencyKey);
     }
 }

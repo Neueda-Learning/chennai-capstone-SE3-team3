@@ -84,11 +84,13 @@ class TradeControllerReadIntegrationTest extends PostgresIntegrationSupport {
                 .andExpect(jsonPath("$[0].accountId").value(1))
                 .andExpect(jsonPath("$[0].symbol").value("INFY.NS"))
                 .andExpect(jsonPath("$[0].side").value("SELL"))
+                .andExpect(jsonPath("$[0].orderPricingType").value("LIMIT"))
                 .andExpect(jsonPath("$[0].status").value("CANCELLED"))
                 .andExpect(jsonPath("$[0].executedPrice").doesNotExist())
                 .andExpect(jsonPath("$[1].orderId").value("1"))
                 .andExpect(jsonPath("$[1].symbol").value("ACME"))
                 .andExpect(jsonPath("$[1].side").value("BUY"))
+                .andExpect(jsonPath("$[1].orderPricingType").value("LIMIT"))
                 .andExpect(jsonPath("$[1].status").value("FILLED"))
                 .andExpect(jsonPath("$[1].executedPrice").value(25.50));
     }
@@ -172,14 +174,15 @@ class TradeControllerReadIntegrationTest extends PostgresIntegrationSupport {
                     order_status,
                     received_at,
                     order_type,
+                    pricing_type,
                     price,
                     quantity,
                     transaction_date,
                     account_id,
                     instrument_id
                 ) VALUES
-                    (1, 'idem-filled', 'FILLED', '2026-09-10T09:14:22Z', 'BUY', 25.50, 100, '2026-09-10T09:14:25Z', 1, 101),
-                    (2, 'idem-cancelled', 'CANCELLED', '2026-09-10T10:14:22Z', 'SELL', 1600.00, 40, '2026-09-10T10:15:00Z', 1, 102)
+                    (1, 'idem-filled', 'FILLED', '2026-09-10T09:14:22Z', 'BUY', 'LIMIT', 25.50, 100, '2026-09-10T09:14:25Z', 1, 101),
+                    (2, 'idem-cancelled', 'CANCELLED', '2026-09-10T10:14:22Z', 'SELL', 'LIMIT', 1600.00, 40, '2026-09-10T10:15:00Z', 1, 102)
                 """);
     }
 }

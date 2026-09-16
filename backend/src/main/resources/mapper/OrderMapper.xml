@@ -31,6 +31,7 @@
             <arg column="order_status" javaType="org.example.backend.enums.OrderStatus" name="orderStatus"/>
             <arg column="received_at" javaType="java.time.OffsetDateTime" name="receivedAt"/>
             <arg column="order_type" javaType="org.example.backend.enums.OrderSide" name="orderSide"/>
+            <arg column="pricing_type" javaType="org.example.backend.enums.OrderPricingType" name="pricingType"/>
             <arg column="price" javaType="java.math.BigDecimal" name="price"/>
             <arg column="quantity" javaType="_long" name="quantity"/>
             <arg column="transaction_date" javaType="java.time.OffsetDateTime" name="transactionDate"/>
@@ -57,6 +58,7 @@
             order_status,
             received_at,
             order_type,
+            pricing_type,
             price,
             quantity,
             transaction_date,
@@ -68,6 +70,7 @@
             #{order.orderStatus},
             #{order.receivedAt},
             #{order.orderSide},
+            #{order.pricingType},
             #{order.price},
             #{order.quantity},
             #{order.transactionDate},
@@ -92,6 +95,7 @@
             order_status,
             received_at,
             order_type,
+            pricing_type,
             price,
             quantity,
             transaction_date,
@@ -114,6 +118,7 @@
             order_status,
             received_at,
             order_type,
+            pricing_type,
             price,
             quantity,
             transaction_date,
@@ -139,6 +144,7 @@
             order_status,
             received_at,
             order_type,
+            pricing_type,
             price,
             quantity,
             transaction_date,
@@ -161,6 +167,7 @@
             order_status,
             received_at,
             order_type,
+            pricing_type,
             price,
             quantity,
             transaction_date,
@@ -185,6 +192,7 @@
             order_status,
             received_at,
             order_type,
+            pricing_type,
             price,
             quantity,
             transaction_date,
@@ -208,6 +216,7 @@
             order_status,
             received_at,
             order_type,
+            pricing_type,
             price,
             quantity,
             transaction_date,
@@ -230,6 +239,7 @@
             order_status,
             received_at,
             order_type,
+            pricing_type,
             price,
             quantity,
             transaction_date,
@@ -252,6 +262,7 @@
             order_status,
             received_at,
             order_type,
+            pricing_type,
             price,
             quantity,
             transaction_date,
@@ -275,6 +286,7 @@
             order_status,
             received_at,
             order_type,
+            pricing_type,
             price,
             quantity,
             transaction_date,
@@ -355,6 +367,9 @@
             <arg column="order_type"
                  javaType="org.example.backend.enums.OrderSide"/>
 
+             <arg column="pricing_type"
+                  javaType="org.example.backend.enums.OrderPricingType"/>
+
             <arg column="quantity"
                  javaType="java.lang.Integer"/>
 
@@ -383,6 +398,7 @@
         o.account_id,
         i.instrument_ticker,
         o.order_type,
+        o.pricing_type,
         CAST(o.quantity AS INTEGER) AS quantity,
         o.price,
 

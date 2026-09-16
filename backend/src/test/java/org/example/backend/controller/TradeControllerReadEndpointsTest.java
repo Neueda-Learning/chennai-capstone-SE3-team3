@@ -5,6 +5,7 @@ import org.example.backend.dto.BalanceResponse;
 import org.example.backend.dto.OrderHistoryEntry;
 import org.example.backend.dto.PositionResponse;
 import org.example.backend.enums.AccountStatus;
+import org.example.backend.enums.OrderPricingType;
 import org.example.backend.enums.OrderSide;
 import org.example.backend.enums.OrderStatus;
 import org.example.backend.exceptions.AccountNotFoundException;
@@ -107,6 +108,7 @@ class TradeControllerReadEndpointsTest {
                                 1L,
                                 "ACME",
                                 OrderSide.BUY,
+                                OrderPricingType.LIMIT,
                                 100,
                                 new BigDecimal("25.50"),
                                 new BigDecimal("25.50"),
@@ -121,6 +123,7 @@ class TradeControllerReadEndpointsTest {
                 .andExpect(jsonPath("$[0].accountId").value(1))
                 .andExpect(jsonPath("$[0].symbol").value("ACME"))
                 .andExpect(jsonPath("$[0].side").value("BUY"))
+                .andExpect(jsonPath("$[0].orderPricingType").value("LIMIT"))
                 .andExpect(jsonPath("$[0].status").value("FILLED"))
                 .andExpect(jsonPath("$[0].idempotencyKey").value("6f2b1c2a-6a1e-4a4f-9c0d-2f7a1b3c4d5e"));
     }

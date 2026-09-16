@@ -10,6 +10,7 @@ import org.example.backend.events.OrderPlacedEvent;
 import org.example.backend.enums.AccountStatus;
 import org.example.backend.enums.InstrumentAssetClass;
 import org.example.backend.enums.InstrumentStatus;
+import org.example.backend.enums.OrderPricingType;
 import org.example.backend.enums.OrderSide;
 import org.example.backend.enums.OrderStatus;
 import org.example.backend.exceptions.AccountNotActiveException;
@@ -94,7 +95,9 @@ class OrderPlacementServiceCharacterizationTest {
                 ACCOUNT_ID,
                 "ACME",
                 OrderSide.BUY,
+                OrderPricingType.LIMIT,
                 100L,
+                new BigDecimal("50.00"),
                 "idem-commit");
 
         ArgumentCaptor<Order> orderCaptor =
@@ -114,14 +117,16 @@ class OrderPlacementServiceCharacterizationTest {
                 () -> assertEquals("Order placed successfully", response.message()),
                 () -> assertEquals("ACME", response.symbol()),
                 () -> assertEquals(OrderSide.BUY, response.side()),
+                () -> assertEquals(OrderPricingType.LIMIT, response.orderPricingType()),
                 () -> assertEquals(100, response.quantity()),
-                () -> assertEquals(null, response.price()),
+                () -> assertEquals(new BigDecimal("50.0000"), response.price()),
                 () -> assertEquals(9001L, persistedOrder.getOrderId()),
                 () -> assertEquals("idem-commit", persistedOrder.getIdempotencyKey()),
                 () -> assertEquals(OrderStatus.NEW, persistedOrder.getOrderStatus()),
                 () -> assertNotNull(persistedOrder.getReceivedAt()),
                 () -> assertEquals(OrderSide.BUY, persistedOrder.getOrderSide()),
-                () -> assertEquals(null, persistedOrder.getPrice()),
+                () -> assertEquals(OrderPricingType.LIMIT, persistedOrder.getPricingType()),
+                () -> assertEquals(new BigDecimal("50.0000"), persistedOrder.getPrice()),
                 () -> assertEquals(100L, persistedOrder.getQuantity()),
                 () -> assertEquals(null, persistedOrder.getTransactionDate()),
                 () -> assertEquals(ACCOUNT_ID, persistedOrder.getAccountId()),
@@ -146,7 +151,9 @@ class OrderPlacementServiceCharacterizationTest {
                         ACCOUNT_ID,
                         "ACME",
                         OrderSide.BUY,
+                        OrderPricingType.LIMIT,
                         100L,
+                        new BigDecimal("50.00"),
                         "idem-duplicate"));
 
         assertAll(
@@ -178,7 +185,9 @@ class OrderPlacementServiceCharacterizationTest {
                 ACCOUNT_ID,
                 "ACME",
                 OrderSide.BUY,
+                OrderPricingType.LIMIT,
                 100L,
+                new BigDecimal("50.00"),
                 "idem-insufficient");
 
         assertAll(
@@ -207,7 +216,9 @@ class OrderPlacementServiceCharacterizationTest {
                         ACCOUNT_ID,
                         "UNKNOWN",
                         OrderSide.BUY,
+                        OrderPricingType.LIMIT,
                         100L,
+                        new BigDecimal("50.00"),
                         "idem-unknown"));
 
         assertAll(
@@ -245,7 +256,9 @@ class OrderPlacementServiceCharacterizationTest {
                         ACCOUNT_ID,
                         "ACME",
                         OrderSide.BUY,
+                        OrderPricingType.LIMIT,
                         100L,
+                        new BigDecimal("50.00"),
                         "idem-inactive"));
 
         assertAll(
@@ -294,6 +307,7 @@ class OrderPlacementServiceCharacterizationTest {
                 OrderStatus.FILLED,
                 OffsetDateTime.parse("2026-09-10T09:00:00Z"),
                 OrderSide.BUY,
+                OrderPricingType.LIMIT,
                 new BigDecimal("50.00"),
                 100L,
                 OffsetDateTime.parse("2026-09-10T09:01:00Z"),
