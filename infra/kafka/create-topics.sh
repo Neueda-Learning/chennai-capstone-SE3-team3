@@ -20,7 +20,7 @@
 set -euo pipefail
 
 BOOTSTRAP_SERVER="${KAFKA_BOOTSTRAP_SERVERS:-kafka:29092}"
-KAFKA_BIN="${KAFKA_BIN:-/opt/kafka/bin}"
+KAFKA_BIN="${KAFKA_BIN:-/usr/bin}"
 TOPICS_SH="${KAFKA_BIN}/kafka-topics.sh"
 
 echo "Waiting for the broker at ${BOOTSTRAP_SERVER}."

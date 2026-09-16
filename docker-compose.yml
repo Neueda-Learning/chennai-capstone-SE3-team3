@@ -54,12 +54,6 @@ services:
       CLUSTER_ID: MkQrQXtsTmyQ1mLvSstIngQ
     ports:
       - "9092:9092"
-    healthcheck:
-      test: ["CMD", "kafka-topics.sh", "--bootstrap-server", "localhost:29092", "--list"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
     networks:
       - trading-net
     volumes:
@@ -71,7 +65,7 @@ services:
     command: /kafka-scripts/create-topics.sh
     depends_on:
       kafka:
-        condition: service_healthy
+        condition: service_started
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     networks:
