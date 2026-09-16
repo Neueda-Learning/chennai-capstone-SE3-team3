@@ -55,7 +55,7 @@ services:
     ports:
       - "9092:9092"
     healthcheck:
-      test: ["CMD", "kafka-broker-api-versions.sh", "--bootstrap-server=localhost:29092"]
+      test: ["CMD", "kafka-topics.sh", "--bootstrap-server", "localhost:29092", "--list"]
       interval: 10s
       timeout: 5s
       retries: 10
