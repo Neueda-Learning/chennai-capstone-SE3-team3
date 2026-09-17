@@ -40,6 +40,8 @@ import java.util.UUID;
 @Service
 public class TradeService {
 
+        private static final BigDecimal MARKET_PERSISTED_PRICE = new BigDecimal("0.0001");
+
     private final AccountMapper accountMapper;
     private final HoldingMapper holdingMapper;
     private final InstrumentMapper instrumentMapper;
@@ -78,13 +80,15 @@ public class TradeService {
         Instrument instrument = requireTradableInstrument(symbol);
         ensureIdempotencyKeyUnused(idempotencyKey);
 
+        BigDecimal persistedPrice = normalizePersistedPrice(orderPricingType, price);
+
         Order order = createAndPersistNewOrder(
                 accountId,
                 instrument,
                 side,
                 orderPricingType,
                 quantity,
-                price,
+                persistedPrice,
                 idempotencyKey);
 
         orderPlacedAfterCommitListener.onOrderPlaced(
@@ -104,8 +108,21 @@ public class TradeService {
                 order.getOrderSide(),
                 order.getPricingType(),
                 (int) order.getQuantity(),
-                order.getPrice());
+                                orderPricingType == OrderPricingType.MARKET
+                                                ? null
+                                                : order.getPrice());
     }
+
+        private static BigDecimal normalizePersistedPrice(
+                        OrderPricingType orderPricingType,
+                        BigDecimal requestedPrice) {
+
+                if (orderPricingType == OrderPricingType.MARKET && requestedPrice == null) {
+                        return MARKET_PERSISTED_PRICE;
+                }
+
+                return requestedPrice;
+        }
 
     private Account requireActiveAccount(long accountId) {
         Account account = accountMapper
