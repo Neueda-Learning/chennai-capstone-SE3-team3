@@ -4,19 +4,20 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers(disabledWithoutDocker = true)
 public abstract class PostgresIntegrationSupport {
 
-    @Container
     @SuppressWarnings("resource")
     protected static final PostgreSQLContainer<?> POSTGRES =
             new PostgreSQLContainer<>("postgres:16-alpine")
                     .withDatabaseName("trade_test")
                     .withUsername("postgres")
                     .withPassword("postgres");
+
+    static {
+        // Start once for the full test JVM to keep JDBC URL stable across cached Spring contexts.
+        POSTGRES.start();
+    }
 
     @DynamicPropertySource
     static void registerDatasourceProperties(
