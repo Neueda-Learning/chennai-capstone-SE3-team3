@@ -155,7 +155,7 @@ class TradeServiceTransactionTest {
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
         verify(orderMapper).insertOrder(orderCaptor.capture());
         verify(orderPlacedAfterCommitListener).onOrderPlaced(any());
-        assertNull(orderCaptor.getValue().getPrice());
+                assertEquals(new BigDecimal("0.0001"), orderCaptor.getValue().getPrice());
     }
 
     @Test

@@ -207,7 +207,7 @@ class OrderPlacementPersistenceCharacterizationTest extends PostgresIntegrationS
 
     private String orderPricingType(String idempotencyKey) {
         return jdbcTemplate.queryForObject(
-                "SELECT pricing_type FROM orders WHERE idempotency_key = ?",
+                "SELECT order_pricing_type FROM orders WHERE idempotency_key = ?",
                 String.class,
                 idempotencyKey);
     }
