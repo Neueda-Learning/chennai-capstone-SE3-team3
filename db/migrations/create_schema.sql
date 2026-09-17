@@ -206,7 +206,6 @@ CREATE TABLE instrument
         )
 );
 
-
 -- ============================================================
 -- 5. ORDERS
 -- ============================================================
@@ -222,6 +221,8 @@ CREATE TABLE orders
     received_at         TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     order_type          VARCHAR(20) NOT NULL,
+
+    order_pricing_type  VARCHAR(20) NOT NULL,
 
     price               NUMERIC(19,4) NOT NULL,
 
@@ -249,6 +250,7 @@ CREATE TABLE orders
         REFERENCES instrument(instrument_id)
         ON DELETE RESTRICT,
 
+    -- Allowed order statuses
     CONSTRAINT chk_order_status
         CHECK (
             order_status IN
@@ -260,12 +262,23 @@ CREATE TABLE orders
             )
         ),
 
+    -- BUY or SELL
     CONSTRAINT chk_order_type
         CHECK (
             order_type IN
             (
                 'BUY',
                 'SELL'
+            )
+        ),
+
+    -- LIMIT or MARKET
+    CONSTRAINT chk_order_pricing_type
+        CHECK (
+            order_pricing_type IN
+            (
+                'LIMIT',
+                'MARKET'
             )
         ),
 
@@ -293,7 +306,6 @@ CREATE TABLE orders
             )
         )
 );
-
 
 -- ============================================================
 -- ORDER LIFECYCLE RULES
