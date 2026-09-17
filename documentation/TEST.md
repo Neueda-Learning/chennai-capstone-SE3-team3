@@ -72,10 +72,13 @@ xdg-open target/reports/surefire-report.html 2>/dev/null || echo "Open target/re
 Run from repository root.
 
 ```bash
+rm -rf reports/surefire/backend-tests-report
 mkdir -p reports/surefire
-cp backend/target/reports/surefire.html reports/surefire/
+cp -r backend/target/reports reports/surefire/backend-tests-report
 cp -r backend/target/surefire-reports reports/surefire/
 ```
+
+This preserves all report assets (css, fonts, images, img, js) so status icons and styling render correctly.
 
 ## Commit and push report
 
