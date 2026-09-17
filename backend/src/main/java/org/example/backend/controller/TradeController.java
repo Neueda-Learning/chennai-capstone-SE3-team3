@@ -61,7 +61,9 @@ public class TradeController {
                 request.accountId(),
                 request.symbol(),
                 request.side(),
+                request.orderPricingType(),
                 request.quantity(),
+                request.price(),
                 request.idempotencyKey());
     }
 

@@ -1,6 +1,7 @@
 package org.example.backend.entities;
 
 import org.example.backend.enums.OrderSide;
+import org.example.backend.enums.OrderPricingType;
 import org.example.backend.enums.OrderStatus;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -30,6 +31,9 @@ public class Order {
     @NotNull
     private final OrderSide orderSide;
 
+    @NotNull
+    private final OrderPricingType pricingType;
+
     @DecimalMin(value = "0.00", inclusive = false)
     @Digits(integer = 17, fraction = 4)
     private final BigDecimal price;
@@ -51,6 +55,7 @@ public class Order {
             OrderStatus orderStatus,
             OffsetDateTime receivedAt,
             OrderSide orderSide,
+            OrderPricingType pricingType,
             BigDecimal price,
             long quantity,
             OffsetDateTime transactionDate,
@@ -89,6 +94,11 @@ public class Order {
                     "Order side is required");
         }
 
+        if (pricingType == null) {
+            throw new IllegalArgumentException(
+                    "Order pricing type is required");
+        }
+
         if (price != null) {
 
             if (price.compareTo(BigDecimal.ZERO) <= 0) {
@@ -122,6 +132,7 @@ public class Order {
         this.orderStatus = orderStatus;
         this.receivedAt = receivedAt;
         this.orderSide = orderSide;
+        this.pricingType = pricingType;
         this.price = price == null
                 ? null
                 : price.setScale(4);
@@ -191,6 +202,10 @@ public class Order {
 
     public OrderSide getOrderSide() {
         return orderSide;
+    }
+
+    public OrderPricingType getPricingType() {
+        return pricingType;
     }
 
     public BigDecimal getPrice() {

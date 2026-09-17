@@ -3,6 +3,7 @@ package org.example.backend.mapper;
 import org.example.backend.entities.Account;
 import org.example.backend.entities.Order;
 import org.example.backend.enums.AccountStatus;
+import org.example.backend.enums.OrderPricingType;
 import org.example.backend.enums.OrderSide;
 import org.example.backend.enums.OrderStatus;
 import org.example.backend.support.PostgresIntegrationSupport;
@@ -61,7 +62,7 @@ class OrderMapperIntegrationTest extends PostgresIntegrationSupport {
     void insertAndReadByIdWorks() {
         long orderId = orderMapper.nextOrderId();
         Order order = new Order(orderId, "idem-1001", OrderStatus.NEW, receivedAt, OrderSide.BUY,
-                new BigDecimal("25.50"), 100L, null, 1001, 101);
+                OrderPricingType.LIMIT, new BigDecimal("25.50"), 100L, null, 1001, 101);
 
         assertEquals(1, orderMapper.insertOrder(order));
 
@@ -69,6 +70,7 @@ class OrderMapperIntegrationTest extends PostgresIntegrationSupport {
         assertTrue(found.isPresent());
         assertEquals("idem-1001", found.get().getIdempotencyKey());
         assertEquals(OrderStatus.NEW, found.get().getOrderStatus());
+        assertEquals(OrderPricingType.LIMIT, found.get().getPricingType());
     }
 
     @Test
@@ -77,9 +79,9 @@ class OrderMapperIntegrationTest extends PostgresIntegrationSupport {
         long filledOrderId = orderMapper.nextOrderId();
 
         orderMapper.insertOrder(new Order(newOrderId, "idem-new", OrderStatus.NEW, receivedAt,
-                OrderSide.BUY, new BigDecimal("25.00"), 10L, null, 1001, 101));
+                OrderSide.BUY, OrderPricingType.LIMIT, new BigDecimal("25.00"), 10L, null, 1001, 101));
         orderMapper.insertOrder(new Order(filledOrderId, "idem-filled", OrderStatus.FILLED, receivedAt.plusMinutes(1),
-                OrderSide.SELL, new BigDecimal("26.00"), 5L, receivedAt.plusMinutes(1), 1001, 101));
+                OrderSide.SELL, OrderPricingType.LIMIT, new BigDecimal("26.00"), 5L, receivedAt.plusMinutes(1), 1001, 101));
 
         List<Order> newOrders = orderMapper.selectOrdersByAccountIdAndStatus(1001, OrderStatus.NEW);
         assertEquals(1, newOrders.size());
@@ -92,10 +94,10 @@ class OrderMapperIntegrationTest extends PostgresIntegrationSupport {
         long orderId2 = orderMapper.nextOrderId();
 
         orderMapper.insertOrder(new Order(orderId1, "idem-dup", OrderStatus.NEW, receivedAt,
-                OrderSide.BUY, new BigDecimal("25.00"), 10L, null, 1001, 101));
+                OrderSide.BUY, OrderPricingType.LIMIT, new BigDecimal("25.00"), 10L, null, 1001, 101));
 
         assertThrows(DataIntegrityViolationException.class,
                 () -> orderMapper.insertOrder(new Order(orderId2, "idem-dup", OrderStatus.NEW, receivedAt,
-                        OrderSide.BUY, new BigDecimal("26.00"), 12L, null, 1001, 101)));
+                        OrderSide.BUY, OrderPricingType.LIMIT, new BigDecimal("26.00"), 12L, null, 1001, 101)));
     }
 }

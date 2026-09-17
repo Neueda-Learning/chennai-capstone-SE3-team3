@@ -1,12 +1,13 @@
 package org.example.backend.characterization.sprint6;
 
 import org.example.backend.dto.OrderResponse;
+import org.example.backend.enums.OrderPricingType;
 import org.example.backend.enums.OrderSide;
 import org.example.backend.enums.OrderStatus;
 import org.example.backend.service.TradeService;
 import org.example.backend.support.PostgresIntegrationSupport;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
+// import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest
-@Disabled("Requires Docker-enabled Postgres test environment")
+// @Disabled("Requires Docker-enabled Postgres test environment")
 class OrderPlacementPersistenceCharacterizationTest extends PostgresIntegrationSupport {
 
     @Autowired
@@ -42,27 +43,29 @@ class OrderPlacementPersistenceCharacterizationTest extends PostgresIntegrationS
                 1L,
                 "ACME",
                 OrderSide.BUY,
+                OrderPricingType.LIMIT,
                 100L,
+                new BigDecimal("50.00"),
                 "idem-success-1");
 
         assertAll(
-                () -> assertEquals(OrderStatus.FILLED, response.status()),
+                () -> assertEquals(OrderStatus.NEW, response.status()),
                 () -> assertEquals("Order placed successfully", response.message()),
                 () -> assertEquals("ACME", response.symbol()),
                 () -> assertEquals(OrderSide.BUY, response.side()),
+                () -> assertEquals(OrderPricingType.LIMIT, response.orderPricingType()),
                 () -> assertEquals(100, response.quantity()),
                 () -> assertEquals(new BigDecimal("50.0000"), response.price()),
-                () -> assertEquals(new BigDecimal("20000.00"), accountBalance(1)),
-                () -> assertEquals(new BigDecimal("20000.00"), purchasingPower(1)),
-                () -> assertEquals(2L, accountVersion(1)),
-                () -> assertEquals(1, holdingsCountFor(1)),
-                () -> assertEquals(100L, holdingQuantity(1, 101)),
-                () -> assertEquals(new BigDecimal("50.0000"), holdingPurchasePrice(1, 101)),
+                () -> assertEquals(new BigDecimal("25000.00"), accountBalance(1)),
+                () -> assertEquals(new BigDecimal("25000.00"), purchasingPower(1)),
+                () -> assertEquals(1L, accountVersion(1)),
+                () -> assertEquals(0, holdingsCountFor(1)),
                 () -> assertEquals(1, ordersCountFor(1)),
                 () -> assertEquals("idem-success-1", orderIdempotencyKey("idem-success-1")),
-                () -> assertEquals("FILLED", orderStatus("idem-success-1")),
+                () -> assertEquals("NEW", orderStatus("idem-success-1")),
                 () -> assertEquals("BUY", orderSide("idem-success-1")),
-                () -> assertEquals(new BigDecimal("50.0000"), orderPrice("idem-success-1")),
+                () -> assertEquals("LIMIT", orderPricingType("idem-success-1")),
+                () -> assertEquals(new BigDecimal("50.00"), orderPrice("idem-success-1")),
                 () -> assertEquals(100L, orderQuantity("idem-success-1")),
                 () -> assertEquals(1, orderAccountId("idem-success-1")),
                 () -> assertEquals(101, orderInstrumentId("idem-success-1")));
@@ -198,6 +201,13 @@ class OrderPlacementPersistenceCharacterizationTest extends PostgresIntegrationS
     private String orderSide(String idempotencyKey) {
         return jdbcTemplate.queryForObject(
                 "SELECT order_type FROM orders WHERE idempotency_key = ?",
+                String.class,
+                idempotencyKey);
+    }
+
+    private String orderPricingType(String idempotencyKey) {
+        return jdbcTemplate.queryForObject(
+                "SELECT pricing_type FROM orders WHERE idempotency_key = ?",
                 String.class,
                 idempotencyKey);
     }

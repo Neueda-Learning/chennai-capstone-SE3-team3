@@ -1,22 +1,25 @@
 package org.example.backend.support;
 
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers(disabledWithoutDocker = true)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
 public abstract class PostgresIntegrationSupport {
 
-    @Container
     @SuppressWarnings("resource")
     protected static final PostgreSQLContainer<?> POSTGRES =
             new PostgreSQLContainer<>("postgres:16-alpine")
                     .withDatabaseName("trade_test")
                     .withUsername("postgres")
                     .withPassword("postgres");
+
+    static {
+        // Start once for the full test JVM to keep JDBC URL stable across cached Spring contexts.
+        POSTGRES.start();
+    }
 
     @DynamicPropertySource
     static void registerDatasourceProperties(
@@ -83,7 +86,8 @@ public abstract class PostgresIntegrationSupport {
                     order_status VARCHAR(20) NOT NULL,
                     received_at TIMESTAMPTZ NOT NULL,
                     order_type VARCHAR(10) NOT NULL,
-                    price NUMERIC(19,2) NOT NULL,
+                    pricing_type VARCHAR(10) NOT NULL,
+                    price NUMERIC(19,2) NULL,
                     quantity BIGINT NOT NULL,
                     transaction_date TIMESTAMPTZ NULL,
                     account_id INTEGER NOT NULL REFERENCES account(account_id),

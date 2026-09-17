@@ -12,6 +12,7 @@ import org.example.backend.entities.Order;
 import org.example.backend.events.OrderPlacedAfterCommitListener;
 import org.example.backend.events.OrderPlacedEvent;
 import org.example.backend.enums.AccountStatus;
+import org.example.backend.enums.OrderPricingType;
 import org.example.backend.enums.OrderSide;
 import org.example.backend.enums.OrderStatus;
 import org.example.backend.exceptions.AccountNotActiveException;
@@ -68,7 +69,9 @@ public class TradeService {
             long accountId,
             String symbol,
             OrderSide side,
+            OrderPricingType orderPricingType,
             long quantity,
+            BigDecimal price,
             String idempotencyKey) {
 
         requireActiveAccount(accountId);
@@ -79,7 +82,9 @@ public class TradeService {
                 accountId,
                 instrument,
                 side,
+                orderPricingType,
                 quantity,
+                price,
                 idempotencyKey);
 
         orderPlacedAfterCommitListener.onOrderPlaced(
@@ -97,6 +102,7 @@ public class TradeService {
                 "Order placed successfully",
                 symbol,
                 order.getOrderSide(),
+                order.getPricingType(),
                 (int) order.getQuantity(),
                 order.getPrice());
     }
@@ -318,7 +324,9 @@ public class TradeService {
             long accountId,
             Instrument instrument,
             OrderSide side,
+            OrderPricingType orderPricingType,
             long quantity,
+            BigDecimal price,
             String idempotencyKey) {
 
         long orderId = orderMapper.nextOrderId();
@@ -330,7 +338,8 @@ public class TradeService {
                 OrderStatus.NEW,
                 receivedAt,
                 side,
-                null,
+                orderPricingType,
+                price,
                 quantity,
                 null,
                 (int) accountId,
@@ -387,6 +396,7 @@ public class TradeService {
                 "Order cancelled successfully",
                 null,
                 order.getOrderSide(),
+                order.getPricingType(),
                 (int) order.getQuantity(),
                 order.getPrice());
     }
