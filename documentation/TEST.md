@@ -73,7 +73,7 @@ Run from repository root.
 
 ```bash
 mkdir -p reports/surefire
-cp backend/target/reports/surefire-report.html reports/surefire/
+cp backend/target/reports/surefire.html reports/surefire/
 cp -r backend/target/surefire-reports reports/surefire/
 ```
 
