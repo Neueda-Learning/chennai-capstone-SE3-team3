@@ -1,5 +1,6 @@
 package org.example.backend.integration;
 
+import org.example.backend.security.ApiAuthenticationFilter;
 import org.example.backend.support.PostgresIntegrationSupport;
 import org.junit.jupiter.api.BeforeEach;
 // import org.junit.jupiter.api.Disabled;
@@ -22,6 +23,9 @@ class TradeControllerReadIntegrationTest extends PostgresIntegrationSupport {
     @Autowired
     private WebApplicationContext webApplicationContext;
 
+    @Autowired
+    private ApiAuthenticationFilter apiAuthenticationFilter;
+
     private MockMvc mockMvc;
 
     @Autowired
@@ -31,6 +35,7 @@ class TradeControllerReadIntegrationTest extends PostgresIntegrationSupport {
     void setUp() {
         mockMvc = MockMvcBuilders
                 .webAppContextSetup(webApplicationContext)
+            .addFilters(apiAuthenticationFilter)
                 .build();
         resetSchema(jdbcTemplate);
         seedReferenceData();
