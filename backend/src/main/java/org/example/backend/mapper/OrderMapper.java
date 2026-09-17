@@ -7,6 +7,7 @@ import org.example.backend.entities.Order;
 import org.example.backend.enums.OrderSide;
 import org.example.backend.enums.OrderStatus;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -47,6 +48,15 @@ public interface OrderMapper {
     int updateOrderStatusAndDate(
             @Param("orderId") long orderId,
             @Param("newStatus") OrderStatus newStatus,
+            @Param("transactionDate") OffsetDateTime transactionDate);
+
+    int fillOrderIfNew(
+            @Param("orderId") long orderId,
+            @Param("executionPrice") BigDecimal executionPrice,
+            @Param("transactionDate") OffsetDateTime transactionDate);
+
+    int rejectOrderIfNew(
+            @Param("orderId") long orderId,
             @Param("transactionDate") OffsetDateTime transactionDate);
 
     long countOrdersByAccountId(

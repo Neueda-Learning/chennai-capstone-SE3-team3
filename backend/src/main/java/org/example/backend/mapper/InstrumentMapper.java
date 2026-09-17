@@ -9,6 +9,9 @@ import java.util.Optional;
 @Mapper
 public interface InstrumentMapper {
 
+    Optional<Instrument> selectInstrumentById(
+            @Param("instrumentId") int instrumentId);
+
     Optional<Instrument> selectInstrumentByTicker(
             @Param("ticker") String ticker);
 }

@@ -327,6 +327,25 @@
         WHERE order_id = #{orderId}
     </update>
 
+    <update id="fillOrderIfNew">
+        UPDATE orders
+        SET
+            order_status = 'FILLED',
+            price = #{executionPrice},
+            transaction_date = #{transactionDate}
+        WHERE order_id = #{orderId}
+          AND order_status = 'NEW'
+    </update>
+
+    <update id="rejectOrderIfNew">
+        UPDATE orders
+        SET
+            order_status = 'REJECTED',
+            transaction_date = #{transactionDate}
+        WHERE order_id = #{orderId}
+          AND order_status = 'NEW'
+    </update>
+
     <!-- ===================================================
          COUNT Operations
          =================================================== -->

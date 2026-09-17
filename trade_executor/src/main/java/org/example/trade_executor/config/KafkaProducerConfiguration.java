@@ -1,9 +1,10 @@
-package org.example.backend.config;
+package org.example.trade_executor.config;
 
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.example.backend.dto.kafka.KafkaEventEnvelope;
 import org.example.backend.events.OrderPlacedMessage;
+import org.example.trade_executor.events.OrderResolvedMessage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,6 +21,22 @@ public class KafkaProducerConfiguration {
 
     @Bean
     public ProducerFactory<String, KafkaEventEnvelope<OrderPlacedMessage>> orderPlacedProducerFactory(
+            @Value("${spring.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers,
+            @Value("${spring.kafka.producer.acks:all}") String acks,
+            @Value("${spring.kafka.producer.retries:2147483647}") int retries,
+            @Value("${spring.kafka.producer.properties.enable.idempotence:true}") boolean idempotence,
+            @Value("${spring.kafka.producer.properties.max.in.flight.requests.per.connection:5}") int maxInFlight) {
+
+        return new DefaultKafkaProducerFactory<>(producerProperties(
+                bootstrapServers,
+                acks,
+                retries,
+                idempotence,
+                maxInFlight));
+    }
+
+    @Bean
+    public ProducerFactory<String, KafkaEventEnvelope<OrderResolvedMessage>> orderResolvedProducerFactory(
             @Value("${spring.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers,
             @Value("${spring.kafka.producer.acks:all}") String acks,
             @Value("${spring.kafka.producer.retries:2147483647}") int retries,
@@ -57,6 +74,13 @@ public class KafkaProducerConfiguration {
             ProducerFactory<String, KafkaEventEnvelope<OrderPlacedMessage>> orderPlacedProducerFactory) {
 
         return new KafkaTemplate<>(orderPlacedProducerFactory);
+    }
+
+    @Bean
+    public KafkaTemplate<String, KafkaEventEnvelope<OrderResolvedMessage>> orderResolvedKafkaTemplate(
+            ProducerFactory<String, KafkaEventEnvelope<OrderResolvedMessage>> orderResolvedProducerFactory) {
+
+        return new KafkaTemplate<>(orderResolvedProducerFactory);
     }
 }
 

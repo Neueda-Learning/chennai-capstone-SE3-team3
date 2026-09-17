@@ -1,0 +1,37 @@
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+        new file:   src/main/java/org/example/backend/client/FauxnanceQuoteClient.java
+        new file:   src/main/java/org/example/backend/client/LiveQuote.java
+        new file:   src/main/java/org/example/backend/client/QuoteClient.java
+        new file:   src/main/java/org/example/backend/client/QuoteUnavailableException.java
+        new file:   src/main/java/org/example/backend/config/KafkaConsumerConfiguration.java
+        new file:   src/main/java/org/example/backend/events/OrderResolvedAfterCommitListener.java
+        new file:   src/main/java/org/example/backend/events/OrderResolvedEvent.java
+        new file:   src/main/java/org/example/backend/events/OrderResolvedMessage.java
+        new file:   src/main/java/org/example/backend/events/TradeEventProducer.java
+        new file:   src/main/java/org/example/backend/executor/ExecutionOutcome.java
+        new file:   src/main/java/org/example/backend/executor/ExecutionRejectReason.java
+        new file:   src/main/java/org/example/backend/executor/FillDecisionEngine.java
+        new file:   src/main/java/org/example/backend/executor/OrderPlacedConsumer.java
+        new file:   src/main/java/org/example/backend/service/OrderSettlementService.java
+        new file:   src/main/java/org/example/backend/service/TradeExecutorService.java
+        new file:   src/test/java/org/example/backend/executor/FillDecisionEngineTest.java
+        new file:   src/test/java/org/example/backend/integration/TradeExecutorIntegrationTest.java
+        new file:   src/test/java/org/example/backend/service/OrderSettlementServiceTest.java
+        new file:   src/test/java/org/example/backend/service/TradeExecutorServiceTest.java
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+        modified:   pom.xml
+        modified:   src/main/java/org/example/backend/client/FauxnanceQuoteClient.java
+        modified:   src/main/java/org/example/backend/config/KafkaProducerConfiguration.java
+        modified:   src/main/java/org/example/backend/mapper/InstrumentMapper.java
+        modified:   src/main/java/org/example/backend/mapper/OrderMapper.java
+        modified:   src/main/resources/application.properties
+        modified:   src/main/resources/mapper/InstrumentMapper.xml
+        modified:   src/main/resources/mapper/OrderMapper.xml
+        modified:   src/test/java/org/example/backend/integration/TradeExecutorIntegrationTest.java
+        modified:   src/test/java/org/example/backend/service/OrderSettlementServiceTest.java
+        modified:   src/test/resources/application.properties

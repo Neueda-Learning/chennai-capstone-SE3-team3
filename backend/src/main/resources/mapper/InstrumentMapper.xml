@@ -32,6 +32,22 @@
 
     </resultMap>
 
+    <select id="selectInstrumentById"
+            resultMap="InstrumentResultMap">
+
+        SELECT
+            instrument_id,
+            instrument_ticker,
+            instrument_name,
+            asset_class,
+            instrument_status
+
+        FROM instrument
+
+        WHERE instrument_id = #{instrumentId}
+
+    </select>
+
     <select id="selectInstrumentByTicker"
             resultMap="InstrumentResultMap">
 
