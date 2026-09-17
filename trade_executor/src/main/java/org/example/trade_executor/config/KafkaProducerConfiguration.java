@@ -51,6 +51,24 @@ public class KafkaProducerConfiguration {
                 maxInFlight));
     }
 
+    @Bean
+    public ProducerFactory<String, String> deadLetterProducerFactory(
+            @Value("${spring.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers,
+            @Value("${spring.kafka.producer.acks:all}") String acks,
+            @Value("${spring.kafka.producer.retries:2147483647}") int retries,
+            @Value("${spring.kafka.producer.properties.enable.idempotence:true}") boolean idempotence,
+            @Value("${spring.kafka.producer.properties.max.in.flight.requests.per.connection:5}") int maxInFlight) {
+
+        Map<String, Object> producerProperties = new HashMap<>(producerProperties(
+                bootstrapServers,
+                acks,
+                retries,
+                idempotence,
+                maxInFlight));
+        producerProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        return new DefaultKafkaProducerFactory<>(producerProperties);
+    }
+
     private static Map<String, Object> producerProperties(
             String bootstrapServers,
             String acks,
@@ -81,6 +99,12 @@ public class KafkaProducerConfiguration {
             ProducerFactory<String, KafkaEventEnvelope<OrderResolvedMessage>> orderResolvedProducerFactory) {
 
         return new KafkaTemplate<>(orderResolvedProducerFactory);
+    }
+
+    @Bean
+    public KafkaTemplate<String, String> deadLetterKafkaTemplate(
+            ProducerFactory<String, String> deadLetterProducerFactory) {
+        return new KafkaTemplate<>(deadLetterProducerFactory);
     }
 }
 

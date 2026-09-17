@@ -17,6 +17,7 @@ import org.example.trade_executor.events.TradeEventProducer;
 import org.example.trade_executor.executor.ExecutionOutcome;
 import org.example.trade_executor.executor.ExecutionRejectReason;
 import org.example.trade_executor.executor.FillDecisionEngine;
+import org.example.trade_executor.executor.PoisonOrderMessageException;
 import org.example.backend.mapper.InstrumentMapper;
 import org.example.backend.mapper.OrderMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -201,6 +202,13 @@ class TradeExecutorServiceTest {
         verify(orderSettlementService).settle(
                 1L,
                 ExecutionOutcome.rejected(ExecutionRejectReason.INSTRUMENT_NOT_TRADABLE));
+    }
+
+    @Test
+    void unknownOrderIdRaisesPoisonMessageError() {
+        when(orderMapper.selectOrderById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(PoisonOrderMessageException.class, () -> tradeExecutorService.execute(event()));
     }
 
     private static Order order(OrderPricingType pricingType, BigDecimal price) {

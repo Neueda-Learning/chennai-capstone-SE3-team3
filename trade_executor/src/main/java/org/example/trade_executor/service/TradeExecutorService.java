@@ -13,6 +13,7 @@ import org.example.trade_executor.events.TradeEventProducer;
 import org.example.trade_executor.executor.ExecutionOutcome;
 import org.example.trade_executor.executor.ExecutionRejectReason;
 import org.example.trade_executor.executor.FillDecisionEngine;
+import org.example.trade_executor.executor.PoisonOrderMessageException;
 import org.example.backend.mapper.InstrumentMapper;
 import org.example.backend.mapper.OrderMapper;
 import org.slf4j.Logger;
@@ -56,8 +57,7 @@ public class TradeExecutorService {
     public void execute(OrderPlacedMessage message) {
         Order order = orderMapper.selectOrderById(message.orderId()).orElse(null);
         if (order == null) {
-            LOGGER.warn("ORDER_PLACED received for missing order {}", message.orderId());
-            return;
+            throw new PoisonOrderMessageException("unknown orderId: " + message.orderId());
         }
 
         if (order.getOrderStatus() != OrderStatus.NEW) {
