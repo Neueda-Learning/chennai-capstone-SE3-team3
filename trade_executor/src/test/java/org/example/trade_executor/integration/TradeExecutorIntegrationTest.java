@@ -9,6 +9,7 @@ import org.example.backend.entities.Order;
 import org.example.backend.enums.*;
 import org.example.backend.events.OrderPlacedMessage;
 import org.example.trade_executor.client.FauxnanceQuoteClient;
+import org.example.trade_executor.events.TradeEventProducer;
 import org.example.trade_executor.executor.ExecutionOutcome;
 import org.example.trade_executor.executor.ExecutionRejectReason;
 import org.example.trade_executor.executor.FillDecisionEngine;
@@ -229,7 +230,15 @@ class TradeExecutorIntegrationTest {
 
         @Bean
         OrderSettlementService orderSettlementService() {
-            return Mockito.mock(OrderSettlementService.class);
+            OrderSettlementService service = Mockito.mock(OrderSettlementService.class);
+            Mockito.when(service.settle(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any()))
+                    .thenReturn(Optional.empty());
+            return service;
+        }
+
+        @Bean
+        TradeEventProducer tradeEventProducer() {
+            return Mockito.mock(TradeEventProducer.class);
         }
 
         @Bean
@@ -252,13 +261,15 @@ class TradeExecutorIntegrationTest {
                 InstrumentMapper instrumentMapper,
                 FauxnanceQuoteClient quoteClient,
                 FillDecisionEngine fillDecisionEngine,
-                OrderSettlementService orderSettlementService) {
+                OrderSettlementService orderSettlementService,
+                TradeEventProducer tradeEventProducer) {
             return new TradeExecutorService(
                     orderMapper,
                     instrumentMapper,
                     quoteClient,
                     fillDecisionEngine,
                     orderSettlementService,
+                    tradeEventProducer,
                     3);
         }
 

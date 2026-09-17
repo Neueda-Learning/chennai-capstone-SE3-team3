@@ -30,7 +30,7 @@ public class OrderPlacedConsumer {
 
     @KafkaListener(
             topics = "${trading.kafka.orders-topic:orders}",
-            groupId = "${trading.kafka.orders-consumer-group:trade-executor}",
+            groupId = "trade-executor",
             containerFactory = "ordersKafkaListenerContainerFactory")
     public void consume(String message, Acknowledgment acknowledgment) {
         tradeExecutorService.execute(parse(message).getPayload());

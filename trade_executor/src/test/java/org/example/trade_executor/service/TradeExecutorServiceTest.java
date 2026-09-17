@@ -1,12 +1,19 @@
 package org.example.trade_executor.service;
 
+import org.example.backend.entities.Instrument;
+import org.example.backend.entities.Order;
+import org.example.backend.enums.InstrumentAssetClass;
+import org.example.backend.enums.InstrumentStatus;
+import org.example.backend.enums.OrderPricingType;
+import org.example.backend.enums.OrderSide;
+import org.example.backend.enums.OrderStatus;
+import org.example.backend.events.OrderPlacedMessage;
+import org.example.backend.exceptions.OptimisticLockException;
 import org.example.trade_executor.client.LiveQuote;
 import org.example.trade_executor.client.QuoteClient;
 import org.example.trade_executor.client.QuoteUnavailableException;
-import org.example.backend.entities.Instrument;
-import org.example.backend.entities.Order;
-import org.example.backend.enums.*;
-import org.example.backend.events.OrderPlacedMessage;
+import org.example.trade_executor.events.OrderResolvedEvent;
+import org.example.trade_executor.events.TradeEventProducer;
 import org.example.trade_executor.executor.ExecutionOutcome;
 import org.example.trade_executor.executor.ExecutionRejectReason;
 import org.example.trade_executor.executor.FillDecisionEngine;
@@ -22,6 +29,9 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -43,6 +53,9 @@ class TradeExecutorServiceTest {
     @Mock
     private OrderSettlementService orderSettlementService;
 
+    @Mock
+    private TradeEventProducer tradeEventProducer;
+
     private TradeExecutorService tradeExecutorService;
 
     @BeforeEach
@@ -53,6 +66,7 @@ class TradeExecutorServiceTest {
                 quoteClient,
                 fillDecisionEngine,
                 orderSettlementService,
+                tradeEventProducer,
                 3);
     }
 
@@ -65,6 +79,9 @@ class TradeExecutorServiceTest {
         when(orderMapper.selectOrderById(1L)).thenReturn(Optional.of(order));
         when(instrumentMapper.selectInstrumentById(101)).thenReturn(Optional.of(instrument));
         when(quoteClient.getQuote("ACME")).thenReturn(Optional.empty());
+        when(orderSettlementService.settle(
+                1L,
+                ExecutionOutcome.rejected(ExecutionRejectReason.PRICE_UNAVAILABLE))).thenReturn(Optional.empty());
 
         tradeExecutorService.execute(event);
 
@@ -82,6 +99,9 @@ class TradeExecutorServiceTest {
         when(orderMapper.selectOrderById(1L)).thenReturn(Optional.of(order));
         when(instrumentMapper.selectInstrumentById(101)).thenReturn(Optional.of(instrument));
         when(quoteClient.getQuote("ACME")).thenThrow(new QuoteUnavailableException("ACME", "downstream unavailable"));
+        when(orderSettlementService.settle(
+                1L,
+                ExecutionOutcome.rejected(ExecutionRejectReason.PRICE_UNAVAILABLE))).thenReturn(Optional.empty());
 
         tradeExecutorService.execute(event);
 
@@ -102,11 +122,85 @@ class TradeExecutorServiceTest {
         when(instrumentMapper.selectInstrumentById(101)).thenReturn(Optional.of(instrument));
         when(quoteClient.getQuote("ACME")).thenReturn(Optional.of(quote));
         when(fillDecisionEngine.decide(order, quote)).thenReturn(outcome);
+        when(orderSettlementService.settle(1L, outcome)).thenReturn(Optional.empty());
 
         tradeExecutorService.execute(event);
 
         verify(fillDecisionEngine).decide(order, quote);
         verify(orderSettlementService).settle(1L, outcome);
+    }
+
+    @Test
+    void exhaustedOptimisticLockRetriesProduceError() {
+        Order order = order(OrderPricingType.MARKET, null);
+        Instrument instrument = instrument();
+        OrderPlacedMessage event = event();
+        LiveQuote quote = new LiveQuote("ACME", new BigDecimal("49.1256"));
+        ExecutionOutcome outcome = ExecutionOutcome.filled(new BigDecimal("49.1256"));
+
+        when(orderMapper.selectOrderById(1L)).thenReturn(Optional.of(order));
+        when(instrumentMapper.selectInstrumentById(101)).thenReturn(Optional.of(instrument));
+        when(quoteClient.getQuote("ACME")).thenReturn(Optional.of(quote));
+        when(fillDecisionEngine.decide(order, quote)).thenReturn(outcome);
+        when(orderSettlementService.settle(1L, outcome)).thenThrow(new OptimisticLockException());
+
+        assertThrows(OptimisticLockException.class, () -> tradeExecutorService.execute(event));
+        verify(orderSettlementService, times(3)).settle(1L, outcome);
+    }
+
+    @Test
+    void successfulSettlementPublishesTradeEvent() {
+        Order order = order(OrderPricingType.MARKET, null);
+        Instrument instrument = instrument();
+        OrderPlacedMessage event = event();
+        LiveQuote quote = new LiveQuote("ACME", new BigDecimal("49.1256"));
+        ExecutionOutcome outcome = ExecutionOutcome.filled(new BigDecimal("49.1256"));
+        OrderResolvedEvent resolvedEvent = new OrderResolvedEvent(
+                "ORDER_FILLED",
+                1L,
+                1,
+                "ACME",
+                OrderSide.BUY,
+                100L,
+                new BigDecimal("49.13"),
+                null,
+                OffsetDateTime.parse("2026-09-17T10:00:00Z"));
+
+        when(orderMapper.selectOrderById(1L)).thenReturn(Optional.of(order));
+        when(instrumentMapper.selectInstrumentById(101)).thenReturn(Optional.of(instrument));
+        when(quoteClient.getQuote("ACME")).thenReturn(Optional.of(quote));
+        when(fillDecisionEngine.decide(order, quote)).thenReturn(outcome);
+        when(orderSettlementService.settle(1L, outcome)).thenReturn(Optional.of(resolvedEvent));
+
+        tradeExecutorService.execute(event);
+
+        verify(tradeEventProducer).publish(resolvedEvent);
+    }
+
+    @Test
+    void instrumentNotTradableOrderDoesNotExecute() {
+        Order order = order(OrderPricingType.MARKET, null);
+        Instrument nonTradableInstrument = new Instrument(
+                101,
+                "ACME",
+                "Acme Corp",
+                InstrumentAssetClass.EQUITY,
+                InstrumentStatus.HALTED);
+        OrderPlacedMessage event = event();
+
+        when(orderMapper.selectOrderById(1L)).thenReturn(Optional.of(order));
+        when(instrumentMapper.selectInstrumentById(101)).thenReturn(Optional.of(nonTradableInstrument));
+        when(orderSettlementService.settle(
+                1L,
+                ExecutionOutcome.rejected(ExecutionRejectReason.INSTRUMENT_NOT_TRADABLE))).thenReturn(Optional.empty());
+
+        tradeExecutorService.execute(event);
+
+        verify(quoteClient, never()).getQuote("ACME");
+        verify(fillDecisionEngine, never()).decide(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        verify(orderSettlementService).settle(
+                1L,
+                ExecutionOutcome.rejected(ExecutionRejectReason.INSTRUMENT_NOT_TRADABLE));
     }
 
     private static Order order(OrderPricingType pricingType, BigDecimal price) {
