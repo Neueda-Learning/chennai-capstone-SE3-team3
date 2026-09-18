@@ -4,6 +4,7 @@ This guide verifies the full flow now that both sides exist:
 
 - backend produces ORDER_PLACED to orders
 - trade_executor consumes orders, settles, then produces resolution events to trade-events
+- trade_executor market poller publishes QUOTE events to market-data
 
 ## Code Map
 
@@ -12,6 +13,8 @@ This guide verifies the full flow now that both sides exist:
 - Consumer entry path in trade_executor: [trade_executor/src/main/java/org/example/trade_executor/executor/OrderPlacedConsumer.java](../trade_executor/src/main/java/org/example/trade_executor/executor/OrderPlacedConsumer.java)
 - Consumer config in trade_executor: [trade_executor/src/main/java/org/example/trade_executor/config/KafkaConsumerConfiguration.java](../trade_executor/src/main/java/org/example/trade_executor/config/KafkaConsumerConfiguration.java)
 - trade_executor result producer: [trade_executor/src/main/java/org/example/trade_executor/events/TradeEventProducer.java](../trade_executor/src/main/java/org/example/trade_executor/events/TradeEventProducer.java)
+- trade_executor market poller: [trade_executor/src/main/java/org/example/trade_executor/marketdata/MarketDataPoller.java](../trade_executor/src/main/java/org/example/trade_executor/marketdata/MarketDataPoller.java)
+- trade_executor market-data producer: [trade_executor/src/main/java/org/example/trade_executor/marketdata/MarketDataEventProducer.java](../trade_executor/src/main/java/org/example/trade_executor/marketdata/MarketDataEventProducer.java)
 
 ## Your Topology
 
@@ -66,6 +69,7 @@ Compose v2:
 ```bash
 docker compose exec kafka kafka-topics --bootstrap-server kafka:29092 --describe --topic orders
 docker compose exec kafka kafka-topics --bootstrap-server kafka:29092 --describe --topic trade-events
+docker compose exec kafka kafka-topics --bootstrap-server kafka:29092 --describe --topic market-data
 ```
 
 Compose v1:
@@ -73,6 +77,7 @@ Compose v1:
 ```bash
 docker-compose exec kafka kafka-topics --bootstrap-server kafka:29092 --describe --topic orders
 docker-compose exec kafka kafka-topics --bootstrap-server kafka:29092 --describe --topic trade-events
+docker-compose exec kafka kafka-topics --bootstrap-server kafka:29092 --describe --topic market-data
 ```
 
 ### 2) Start live consumers on Linux VM
@@ -101,6 +106,19 @@ docker-compose exec kafka kafka-console-consumer \
   --property print.timestamp=true
 ```
 
+Terminal C (market-data topic):
+
+```bash
+docker-compose exec kafka kafka-console-consumer \
+  --bootstrap-server kafka:29092 \
+  --topic market-data \
+  --property print.key=true \
+  --property key.separator=" | " \
+  --property print.partition=true \
+  --property print.timestamp=true
+```
+```
+
 ### 3) Run backend and trade_executor on Windows
 
 Confirm both processes start with KAFKA_BOOTSTRAP_SERVERS=10.8.78.105:9092.
@@ -114,6 +132,7 @@ Use a new idempotencyKey each call.
 - orders consumer shows ORDER_PLACED event
 - trade_executor consumes and processes that event
 - trade-events consumer shows resolution event such as ORDER_FILLED or ORDER_REJECTED
+- market-data consumer shows QUOTE events keyed by symbol
 - orders table status transitions from NEW to a terminal state when execution completes
 
 ## How Detection Works Across Windows and Linux
