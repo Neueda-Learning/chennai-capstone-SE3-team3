@@ -2,6 +2,8 @@ package org.example.trade_executor.client;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -19,6 +21,8 @@ import java.util.regex.Pattern;
 @Component
 public class FauxnanceQuoteClient implements QuoteClient {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(FauxnanceQuoteClient.class);
+
     private static final Pattern SYMBOL_PATTERN = Pattern.compile("\"symbol\"\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern PRICE_PATTERN = Pattern.compile("\"price\"\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)");
 
@@ -27,10 +31,12 @@ public class FauxnanceQuoteClient implements QuoteClient {
     private final int maxAttempts;
     private final long retryDelayMillis;
     private final Duration requestTimeout;
+    private final String apiKey;
 
     @Autowired
     public FauxnanceQuoteClient(
-            @Value("${trading.quote.base-url:http://localhost:8081}") String baseUrl,
+            @Value("${trading.quote.base-url}") String baseUrl,
+            @Value("${trading.quote.api-key:}") String apiKey,
             @Value("${trading.quote.max-attempts:3}") int maxAttempts,
             @Value("${trading.quote.retry-delay-millis:100}") long retryDelayMillis,
             @Value("${trading.quote.request-timeout-millis:1000}") long requestTimeoutMillis) {
@@ -39,20 +45,32 @@ public class FauxnanceQuoteClient implements QuoteClient {
                         .connectTimeout(Duration.ofMillis(requestTimeoutMillis))
                         .build(),
                 URI.create(baseUrl.endsWith("/") ? baseUrl : baseUrl + "/"),
+                apiKey,
                 maxAttempts,
                 retryDelayMillis,
                 Duration.ofMillis(requestTimeoutMillis));
     }
 
     FauxnanceQuoteClient(
+            String baseUrl,
+            int maxAttempts,
+            long retryDelayMillis,
+            long requestTimeoutMillis) {
+
+        this(baseUrl, "", maxAttempts, retryDelayMillis, requestTimeoutMillis);
+    }
+
+    FauxnanceQuoteClient(
             HttpClient httpClient,
             URI baseUri,
+            String apiKey,
             int maxAttempts,
             long retryDelayMillis,
             Duration requestTimeout) {
 
         this.httpClient = httpClient;
         this.baseUri = baseUri;
+        this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.maxAttempts = Math.max(1, maxAttempts);
         this.retryDelayMillis = Math.max(0L, retryDelayMillis);
         this.requestTimeout = requestTimeout;
@@ -60,10 +78,17 @@ public class FauxnanceQuoteClient implements QuoteClient {
 
     @Override
     public Optional<LiveQuote> getQuote(String symbol) {
-        HttpRequest request = HttpRequest.newBuilder(resolveQuoteUri(symbol))
-                .timeout(requestTimeout)
-                .GET()
-                .build();
+        URI quoteUri = resolveQuoteUri(symbol);
+
+        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(quoteUri)
+            .timeout(requestTimeout)
+            .GET();
+
+        if (!apiKey.isEmpty()) {
+            requestBuilder.header("X-Api-Key", apiKey);
+        }
+
+        HttpRequest request = requestBuilder.build();
 
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
@@ -76,22 +101,49 @@ public class FauxnanceQuoteClient implements QuoteClient {
                 }
 
                 if (response.statusCode() == 404 || response.statusCode() == 204) {
+                    LOGGER.info("No quote available for symbol {} (HTTP {})", symbol, response.statusCode());
                     return Optional.empty();
                 }
 
                 if (isRetryable(response.statusCode()) && attempt < maxAttempts) {
+                    LOGGER.warn(
+                            "Retryable quote lookup failure for symbol {} at {} (HTTP {}, attempt {} of {})",
+                            symbol,
+                            quoteUri,
+                            response.statusCode(),
+                            attempt,
+                            maxAttempts);
                     backoff(attempt);
                     continue;
                 }
+
+                LOGGER.error(
+                    "Quote lookup failed for symbol {} at {} with HTTP {}",
+                    symbol,
+                    quoteUri,
+                    response.statusCode());
 
                 throw new QuoteUnavailableException(
                         symbol,
                         "Quote lookup failed with HTTP status " + response.statusCode());
             } catch (IOException ex) {
                 if (attempt < maxAttempts) {
+                    LOGGER.warn(
+                            "I/O error during quote lookup for symbol {} at {} (attempt {} of {})",
+                            symbol,
+                            quoteUri,
+                            attempt,
+                            maxAttempts,
+                            ex);
                     backoff(attempt);
                     continue;
                 }
+
+                LOGGER.error(
+                    "Quote lookup failed after retries for symbol {} at {}",
+                    symbol,
+                    quoteUri,
+                    ex);
 
                 throw new QuoteUnavailableException(
                         symbol,

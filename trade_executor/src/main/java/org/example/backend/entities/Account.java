@@ -1,49 +1,188 @@
 package org.example.backend.entities;
 
 import org.example.backend.enums.AccountStatus;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.Objects;
 
 public class Account {
 
+    @Positive
     private final int accountId;
+
+    @NotBlank
+    @Size(max = 30)
     private final String accountNumber;
-    private final LocalDate openedDate;
+
+    @NotNull
+    private final LocalDate openingDate;
+
+    @NotNull
+    @DecimalMin(value = "0.00")
     private BigDecimal balance;
-    private BigDecimal availableBalance;
-    private final AccountStatus accountStatus;
+
+    @NotNull
+    @DecimalMin(value = "0.00")
+    private BigDecimal purchasingPower;
+
+    @NotNull
+    private AccountStatus accountStatus;
+
+    @NotBlank
+    @Size(min = 3, max = 3)
     private final String currency;
-    private long version;
-    private final Object closedAt;
-    private final Object createdBy;
-    private final int branchId;
+
+    @Positive
+    private final long version;
+
+    private OffsetDateTime suspendedAt;
+    private OffsetDateTime closedAt;
+
+    @Positive
+    private final int clientId;
 
     public Account(
             int accountId,
             String accountNumber,
-            LocalDate openedDate,
+            LocalDate openingDate,
             BigDecimal balance,
-            BigDecimal availableBalance,
+            BigDecimal purchasingPower,
             AccountStatus accountStatus,
             String currency,
             long version,
-            Object closedAt,
-            Object createdBy,
-            int branchId) {
+            OffsetDateTime suspendedAt,
+            OffsetDateTime closedAt,
+            int clientId) {
+
+        if (accountId < 1) {
+            throw new IllegalArgumentException(
+                    "Account ID must be at least 1");
+        }
+
+        if (accountNumber == null || accountNumber.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Account number is required");
+        }
+
+        if (accountNumber.length() > 30) {
+            throw new IllegalArgumentException(
+                    "Account number cannot exceed 30 characters");
+        }
+
+        Objects.requireNonNull(
+                openingDate,
+                "Opening date is required");
+
+        validateMoney(balance, "Balance");
+        validateMoney(purchasingPower, "Purchasing power");
+
+        Objects.requireNonNull(
+                accountStatus,
+                "Account status is required");
+
+        if (currency == null || !currency.matches("[A-Z]{3}")) {
+            throw new IllegalArgumentException(
+                    "Currency must be a three-letter uppercase code");
+        }
+
+        if (version < 1) {
+            throw new IllegalArgumentException(
+                    "Version must be at least 1");
+        }
+
+        if (clientId < 1) {
+            throw new IllegalArgumentException(
+                    "Client ID must be at least 1");
+        }
+
 
         this.accountId = accountId;
-        this.accountNumber = Objects.requireNonNull(accountNumber, "accountNumber is required");
-        this.openedDate = Objects.requireNonNull(openedDate, "openedDate is required");
-        this.balance = Objects.requireNonNull(balance, "balance is required");
-        this.availableBalance = Objects.requireNonNull(availableBalance, "availableBalance is required");
-        this.accountStatus = Objects.requireNonNull(accountStatus, "accountStatus is required");
-        this.currency = Objects.requireNonNull(currency, "currency is required");
+        this.accountNumber = accountNumber;
+        this.openingDate = openingDate;
+        this.balance = normaliseMoney(balance);
+        this.purchasingPower = normaliseMoney(purchasingPower);
+        this.accountStatus = accountStatus;
+        this.currency = currency;
         this.version = version;
+        this.suspendedAt = suspendedAt;
         this.closedAt = closedAt;
-        this.createdBy = createdBy;
-        this.branchId = branchId;
+        this.clientId = clientId;
+    }
+
+    public void credit(BigDecimal amount) {
+
+        if (amount == null) {
+            throw new IllegalArgumentException("Credit amount cannot be null");
+        }
+
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Credit amount must be positive");
+        }
+
+        balance = balance.add(amount);
+    }
+
+    public void debit(BigDecimal amount) {
+
+        if (amount == null) {
+            throw new IllegalArgumentException("Debit amount cannot be null");
+        }
+
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Debit amount must be positive");
+        }
+
+        if (!canAfford(amount)) {
+            throw new IllegalArgumentException("Insufficient balance");
+        }
+
+        balance = balance.subtract(amount);
+    }
+
+    public boolean canAfford(BigDecimal amount) {
+
+        if (amount == null) {
+            return false;
+        }
+
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            return false;
+        }
+
+        return balance.compareTo(amount) >= 0;
+    }
+
+    private static BigDecimal normaliseMoney(
+            BigDecimal value) {
+
+        return value.setScale(4);
+    }
+
+    private static void validateMoney(
+            BigDecimal value,
+            String fieldName) {
+
+        Objects.requireNonNull(
+                value,
+                fieldName + " is required");
+
+        if (value.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException(
+                    fieldName + " cannot be negative");
+        }
+
+        if (value.scale() > 4) {
+            throw new IllegalArgumentException(
+                fieldName
+                    + " cannot have more than four decimal places");
+        }
     }
 
     public int getAccountId() {
@@ -54,16 +193,16 @@ public class Account {
         return accountNumber;
     }
 
-    public LocalDate getOpenedDate() {
-        return openedDate;
+    public LocalDate getOpeningDate() {
+        return openingDate;
     }
 
     public BigDecimal getBalance() {
         return balance;
     }
 
-    public BigDecimal getAvailableBalance() {
-        return availableBalance;
+    public BigDecimal getPurchasingPower() {
+        return purchasingPower;
     }
 
     public AccountStatus getAccountStatus() {
@@ -78,39 +217,15 @@ public class Account {
         return version;
     }
 
-    public Object getClosedAt() {
+    public OffsetDateTime getSuspendedAt() {
+        return suspendedAt;
+    }
+
+    public OffsetDateTime getClosedAt() {
         return closedAt;
     }
 
-    public Object getCreatedBy() {
-        return createdBy;
-    }
-
-    public int getBranchId() {
-        return branchId;
-    }
-
-    public boolean canAfford(BigDecimal amount) {
-        return amount != null && balance.compareTo(amount) >= 0;
-    }
-
-    public void debit(BigDecimal amount) {
-        validateAmount(amount);
-        balance = balance.subtract(amount);
-        availableBalance = availableBalance.subtract(amount);
-    }
-
-    public void credit(BigDecimal amount) {
-        validateAmount(amount);
-        balance = balance.add(amount);
-        availableBalance = availableBalance.add(amount);
-    }
-
-    private static void validateAmount(BigDecimal amount) {
-        Objects.requireNonNull(amount, "amount is required");
-        if (amount.signum() < 0) {
-            throw new IllegalArgumentException("amount cannot be negative");
-        }
+    public int getClientId() {
+        return clientId;
     }
 }
-

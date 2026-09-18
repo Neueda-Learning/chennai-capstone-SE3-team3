@@ -6,6 +6,7 @@ import org.example.backend.mapper.InstrumentMapper;
 import org.example.backend.mapper.OrderMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -13,6 +14,7 @@ import java.lang.reflect.Proxy;
 import java.util.Optional;
 
 @Configuration
+@Profile("fallback-mappers")
 public class MapperFallbackConfiguration {
 
     @Bean

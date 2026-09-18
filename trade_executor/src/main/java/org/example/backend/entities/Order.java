@@ -1,49 +1,76 @@
 package org.example.backend.entities;
 
-import org.example.backend.enums.OrderPricingType;
 import org.example.backend.enums.OrderSide;
+import org.example.backend.enums.OrderPricingType;
 import org.example.backend.enums.OrderStatus;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.Objects;
 
 public class Order {
 
+    @Positive
     private final long orderId;
+
+    @NotBlank
+    @Size(max = 100)
     private final String idempotencyKey;
+
+    @NotNull
     private OrderStatus orderStatus;
-    private final OffsetDateTime createdAt;
+
+    @NotNull
+    private final OffsetDateTime receivedAt;
+
+    @NotNull
     private final OrderSide orderSide;
+
+    @NotNull
     private final OrderPricingType pricingType;
+
+    @DecimalMin(value = "0.00", inclusive = false)
+    @Digits(integer = 17, fraction = 4)
     private final BigDecimal price;
+
+    @Positive
     private final long quantity;
-    private final BigDecimal executionPrice;
+
+    private OffsetDateTime transactionDate;
+
+    @Positive
     private final int accountId;
+
+    @Positive
     private final int instrumentId;
 
     public Order(
             long orderId,
             String idempotencyKey,
             OrderStatus orderStatus,
-            OffsetDateTime createdAt,
+            OffsetDateTime receivedAt,
             OrderSide orderSide,
             OrderPricingType pricingType,
             BigDecimal price,
             long quantity,
-            BigDecimal executionPrice,
+            OffsetDateTime transactionDate,
             int accountId,
             int instrumentId) {
 
         this.orderId = orderId;
-        this.idempotencyKey = Objects.requireNonNull(idempotencyKey, "idempotencyKey is required");
-        this.orderStatus = Objects.requireNonNull(orderStatus, "orderStatus is required");
-        this.createdAt = Objects.requireNonNull(createdAt, "createdAt is required");
-        this.orderSide = Objects.requireNonNull(orderSide, "orderSide is required");
-        this.pricingType = Objects.requireNonNull(pricingType, "pricingType is required");
+        this.idempotencyKey = idempotencyKey;
+        this.orderStatus = orderStatus;
+        this.receivedAt = receivedAt;
+        this.orderSide = orderSide;
+        this.pricingType = pricingType;
         this.price = price;
         this.quantity = quantity;
-        this.executionPrice = executionPrice;
+        this.transactionDate = transactionDate;
         this.accountId = accountId;
         this.instrumentId = instrumentId;
     }
@@ -60,12 +87,8 @@ public class Order {
         return orderStatus;
     }
 
-    public void setOrderStatus(OrderStatus orderStatus) {
-        this.orderStatus = Objects.requireNonNull(orderStatus, "orderStatus is required");
-    }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
+    public OffsetDateTime getReceivedAt() {
+        return receivedAt;
     }
 
     public OrderSide getOrderSide() {
@@ -84,8 +107,8 @@ public class Order {
         return quantity;
     }
 
-    public BigDecimal getExecutionPrice() {
-        return executionPrice;
+    public OffsetDateTime getTransactionDate() {
+        return transactionDate;
     }
 
     public int getAccountId() {
@@ -96,4 +119,3 @@ public class Order {
         return instrumentId;
     }
 }
-

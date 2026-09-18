@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -54,7 +55,13 @@ public class TradeExecutorService {
         this.maxSettlementAttempts = Math.max(1, maxSettlementAttempts);
     }
 
+    @Transactional
     public void execute(OrderPlacedMessage message) {
+        LOGGER.info("Received ORDER_PLACED message for orderId={} accountId={} symbol={}",
+                message.orderId(),
+                message.accountId(),
+                message.symbol());
+
         Order order = orderMapper.selectOrderById(message.orderId()).orElse(null);
         if (order == null) {
             throw new PoisonOrderMessageException("unknown orderId: " + message.orderId());
@@ -66,19 +73,31 @@ public class TradeExecutorService {
         }
 
         Instrument instrument = instrumentMapper.selectInstrumentById(order.getInstrumentId()).orElse(null);
+        if (instrument == null) {
+            LOGGER.warn("Instrument not found for order {} (instrumentId={})", order.getOrderId(), order.getInstrumentId());
+        }
+
         ExecutionOutcome marketOutcome = determineMarketOutcome(order, instrument);
+        LOGGER.info("Market outcome for order {}: status={} reason={}",
+            order.getOrderId(),
+            marketOutcome.status(),
+            marketOutcome.rejectReason());
+
         settleWithRetry(order.getOrderId(), marketOutcome)
                 .ifPresent(tradeEventProducer::publish);
     }
 
     private ExecutionOutcome determineMarketOutcome(Order order, Instrument instrument) {
         if (instrument == null || !instrument.isTradable()) {
+            LOGGER.info("Skipping quote lookup for order {} because instrument is not tradable", order.getOrderId());
             return ExecutionOutcome.rejected(ExecutionRejectReason.INSTRUMENT_NOT_TRADABLE);
         }
 
         try {
+            LOGGER.info("Requesting quote for order {} symbol={}", order.getOrderId(), instrument.getInstrumentTicker());
             Optional<LiveQuote> quote = quoteClient.getQuote(instrument.getInstrumentTicker());
             if (quote.isEmpty()) {
+                LOGGER.info("Quote unavailable for order {} symbol={}", order.getOrderId(), instrument.getInstrumentTicker());
                 return ExecutionOutcome.rejected(ExecutionRejectReason.PRICE_UNAVAILABLE);
             }
 

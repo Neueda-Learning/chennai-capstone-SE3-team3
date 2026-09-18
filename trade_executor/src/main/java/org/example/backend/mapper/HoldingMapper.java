@@ -1,19 +1,27 @@
 package org.example.backend.mapper;
 
+import org.apache.ibatis.annotations.Param;
 import org.example.backend.entities.Holding;
 
 import java.util.Optional;
 
 public interface HoldingMapper {
 
-    Optional<Holding> selectHoldingByAccountAndInstrument(int accountId, int instrumentId);
+        Optional<Holding> selectHoldingByAccountAndInstrument(
+            @Param("accountId") int accountId,
+            @Param("instrumentId") int instrumentId);
 
     long nextHoldingId();
 
     int insertHolding(Holding holding);
 
-    int updateHoldingQuantity(long holdingId, long quantity);
+        int updateHoldingQuantity(
+            @Param("holdingId") long holdingId,
+            @Param("quantity") long quantity);
 
-    int updateHoldingQuantityAndPrice(long holdingId, long quantity, java.math.BigDecimal purchasePrice);
+        int updateHoldingQuantityAndPrice(
+            @Param("holdingId") long holdingId,
+            @Param("quantity") long quantity,
+            @Param("purchasePrice") java.math.BigDecimal purchasePrice);
 }
 

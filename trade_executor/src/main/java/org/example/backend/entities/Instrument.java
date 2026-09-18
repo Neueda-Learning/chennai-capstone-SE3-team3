@@ -2,29 +2,42 @@ package org.example.backend.entities;
 
 import org.example.backend.enums.InstrumentAssetClass;
 import org.example.backend.enums.InstrumentStatus;
-
-import java.util.Objects;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 public class Instrument {
 
+    @Positive
     private final int instrumentId;
+
+    @NotBlank
+    @Size(max = 20)
     private final String instrumentTicker;
+
+    @NotBlank
+    @Size(max = 255)
     private final String instrumentName;
-    private final InstrumentAssetClass instrumentAssetClass;
-    private final InstrumentStatus instrumentStatus;
+
+    @NotNull
+    private final InstrumentAssetClass assetClass;
+
+    @NotNull
+    private InstrumentStatus instrumentStatus;
 
     public Instrument(
             int instrumentId,
             String instrumentTicker,
             String instrumentName,
-            InstrumentAssetClass instrumentAssetClass,
+            InstrumentAssetClass assetClass,
             InstrumentStatus instrumentStatus) {
 
         this.instrumentId = instrumentId;
-        this.instrumentTicker = Objects.requireNonNull(instrumentTicker, "instrumentTicker is required");
-        this.instrumentName = Objects.requireNonNull(instrumentName, "instrumentName is required");
-        this.instrumentAssetClass = Objects.requireNonNull(instrumentAssetClass, "instrumentAssetClass is required");
-        this.instrumentStatus = Objects.requireNonNull(instrumentStatus, "instrumentStatus is required");
+        this.instrumentTicker = instrumentTicker;
+        this.instrumentName = instrumentName;
+        this.assetClass = assetClass;
+        this.instrumentStatus = instrumentStatus;
     }
 
     public int getInstrumentId() {
@@ -39,8 +52,8 @@ public class Instrument {
         return instrumentName;
     }
 
-    public InstrumentAssetClass getInstrumentAssetClass() {
-        return instrumentAssetClass;
+    public InstrumentAssetClass getAssetClass() {
+        return assetClass;
     }
 
     public InstrumentStatus getInstrumentStatus() {
@@ -51,4 +64,3 @@ public class Instrument {
         return instrumentStatus == InstrumentStatus.TRADING;
     }
 }
-

@@ -3,7 +3,6 @@ package org.example.trade_executor.events;
 import org.example.backend.enums.OrderSide;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
 
 public record OrderResolvedMessage(
         long orderId,
@@ -13,7 +12,7 @@ public record OrderResolvedMessage(
         long quantity,
         BigDecimal executionPrice,
         String reason,
-        OffsetDateTime occurredAt) {
+    String occurredAt) {
 
     public static OrderResolvedMessage from(OrderResolvedEvent event) {
         return new OrderResolvedMessage(
@@ -24,7 +23,7 @@ public record OrderResolvedMessage(
                 event.quantity(),
                 event.executionPrice(),
                 event.rejectReason() == null ? null : event.rejectReason().name(),
-                event.occurredAt());
+                event.occurredAt() == null ? null : event.occurredAt().toString());
     }
 }
 
