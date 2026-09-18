@@ -179,7 +179,7 @@ class TradeControllerReadIntegrationTest extends PostgresIntegrationSupport {
                     order_status,
                     received_at,
                     order_type,
-                    pricing_type,
+                    order_pricing_type,
                     price,
                     quantity,
                     transaction_date,

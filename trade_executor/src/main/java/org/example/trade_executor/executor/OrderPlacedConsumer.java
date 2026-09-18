@@ -10,8 +10,12 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 
+import java.util.Objects;
+
 @Component
 public class OrderPlacedConsumer {
+
+    static final String ORDER_PLACED_EVENT_TYPE = "ORDER_PLACED";
 
     private static final TypeReference<KafkaEventEnvelope<OrderPlacedMessage>> ENVELOPE_TYPE =
             new TypeReference<>() {
@@ -30,7 +34,7 @@ public class OrderPlacedConsumer {
 
     @KafkaListener(
             topics = "${trading.kafka.orders-topic:orders}",
-            groupId = "${trading.kafka.orders-consumer-group:trade-executor}",
+            groupId = "trade-executor",
             containerFactory = "ordersKafkaListenerContainerFactory")
     public void consume(String message, Acknowledgment acknowledgment) {
         tradeExecutorService.execute(parse(message).getPayload());
@@ -41,11 +45,20 @@ public class OrderPlacedConsumer {
         try {
             KafkaEventEnvelope<OrderPlacedMessage> envelope = objectMapper.readValue(message, ENVELOPE_TYPE);
             if (envelope.getPayload() == null) {
-                throw new IllegalArgumentException("Kafka envelope payload is required");
+                throw new PoisonOrderMessageException("missing payload");
             }
+
+            if (!ORDER_PLACED_EVENT_TYPE.equals(Objects.toString(envelope.eventType(), null))) {
+                throw new PoisonOrderMessageException("unexpected eventType: " + envelope.eventType());
+            }
+
+            if (envelope.getPayload().orderId() <= 0) {
+                throw new PoisonOrderMessageException("missing orderId");
+            }
+
             return envelope;
         } catch (JsonProcessingException ex) {
-            throw new IllegalArgumentException("Unable to parse ORDER_PLACED message", ex);
+            throw new PoisonOrderMessageException("malformed JSON", ex);
         }
     }
 }

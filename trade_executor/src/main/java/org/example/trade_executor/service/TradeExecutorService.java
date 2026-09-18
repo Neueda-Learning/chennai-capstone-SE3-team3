@@ -8,9 +8,12 @@ import org.example.backend.entities.Order;
 import org.example.backend.enums.OrderStatus;
 import org.example.backend.events.OrderPlacedMessage;
 import org.example.backend.exceptions.OptimisticLockException;
+import org.example.trade_executor.events.OrderResolvedEvent;
+import org.example.trade_executor.events.TradeEventProducer;
 import org.example.trade_executor.executor.ExecutionOutcome;
 import org.example.trade_executor.executor.ExecutionRejectReason;
 import org.example.trade_executor.executor.FillDecisionEngine;
+import org.example.trade_executor.executor.PoisonOrderMessageException;
 import org.example.backend.mapper.InstrumentMapper;
 import org.example.backend.mapper.OrderMapper;
 import org.slf4j.Logger;
@@ -30,6 +33,7 @@ public class TradeExecutorService {
     private final QuoteClient quoteClient;
     private final FillDecisionEngine fillDecisionEngine;
     private final OrderSettlementService orderSettlementService;
+    private final TradeEventProducer tradeEventProducer;
     private final int maxSettlementAttempts;
 
     public TradeExecutorService(
@@ -38,6 +42,7 @@ public class TradeExecutorService {
             QuoteClient quoteClient,
             FillDecisionEngine fillDecisionEngine,
             OrderSettlementService orderSettlementService,
+            TradeEventProducer tradeEventProducer,
             @Value("${trading.executor.max-settlement-attempts:3}") int maxSettlementAttempts) {
 
         this.orderMapper = orderMapper;
@@ -45,14 +50,14 @@ public class TradeExecutorService {
         this.quoteClient = quoteClient;
         this.fillDecisionEngine = fillDecisionEngine;
         this.orderSettlementService = orderSettlementService;
+        this.tradeEventProducer = tradeEventProducer;
         this.maxSettlementAttempts = Math.max(1, maxSettlementAttempts);
     }
 
     public void execute(OrderPlacedMessage message) {
         Order order = orderMapper.selectOrderById(message.orderId()).orElse(null);
         if (order == null) {
-            LOGGER.warn("ORDER_PLACED received for missing order {}", message.orderId());
-            return;
+            throw new PoisonOrderMessageException("unknown orderId: " + message.orderId());
         }
 
         if (order.getOrderStatus() != OrderStatus.NEW) {
@@ -62,7 +67,8 @@ public class TradeExecutorService {
 
         Instrument instrument = instrumentMapper.selectInstrumentById(order.getInstrumentId()).orElse(null);
         ExecutionOutcome marketOutcome = determineMarketOutcome(order, instrument);
-        settleWithRetry(order.getOrderId(), marketOutcome);
+        settleWithRetry(order.getOrderId(), marketOutcome)
+                .ifPresent(tradeEventProducer::publish);
     }
 
     private ExecutionOutcome determineMarketOutcome(Order order, Instrument instrument) {
@@ -83,11 +89,10 @@ public class TradeExecutorService {
         }
     }
 
-    private void settleWithRetry(long orderId, ExecutionOutcome marketOutcome) {
+    private Optional<OrderResolvedEvent> settleWithRetry(long orderId, ExecutionOutcome marketOutcome) {
         for (int attempt = 1; attempt <= maxSettlementAttempts; attempt++) {
             try {
-                orderSettlementService.settle(orderId, marketOutcome);
-                return;
+                return orderSettlementService.settle(orderId, marketOutcome);
             } catch (OptimisticLockException ex) {
                 if (attempt == maxSettlementAttempts) {
                     throw ex;
@@ -100,6 +105,9 @@ public class TradeExecutorService {
                         maxSettlementAttempts);
             }
         }
+
+        // Defensive fallback; loop always returns or throws.
+        return Optional.empty();
     }
 }
 

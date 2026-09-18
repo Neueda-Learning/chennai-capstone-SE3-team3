@@ -11,7 +11,6 @@ import org.example.backend.mapper.AccountMapper;
 import org.example.backend.mapper.HoldingMapper;
 import org.example.backend.mapper.InstrumentMapper;
 import org.example.backend.mapper.OrderMapper;
-import org.example.trade_executor.events.OrderResolvedAfterCommitListener;
 import org.example.trade_executor.events.OrderResolvedEvent;
 import org.example.trade_executor.executor.ExecutionOutcome;
 import org.example.trade_executor.executor.ExecutionRejectReason;
@@ -21,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
+import java.util.Optional;
 
 @Service
 public class OrderSettlementService {
@@ -29,27 +29,24 @@ public class OrderSettlementService {
     private final HoldingMapper holdingMapper;
     private final InstrumentMapper instrumentMapper;
     private final OrderMapper orderMapper;
-    private final OrderResolvedAfterCommitListener orderResolvedAfterCommitListener;
 
     public OrderSettlementService(
             AccountMapper accountMapper,
             HoldingMapper holdingMapper,
             InstrumentMapper instrumentMapper,
-            OrderMapper orderMapper,
-            OrderResolvedAfterCommitListener orderResolvedAfterCommitListener) {
+            OrderMapper orderMapper) {
 
         this.accountMapper = accountMapper;
         this.holdingMapper = holdingMapper;
         this.instrumentMapper = instrumentMapper;
         this.orderMapper = orderMapper;
-        this.orderResolvedAfterCommitListener = orderResolvedAfterCommitListener;
     }
 
     @Transactional
-    public void settle(long orderId, ExecutionOutcome marketOutcome) {
+    public Optional<OrderResolvedEvent> settle(long orderId, ExecutionOutcome marketOutcome) {
         Order order = orderMapper.selectOrderById(orderId).orElse(null);
-        if (order == null || order.getOrderStatus().name().equals("FILLED") || order.getOrderStatus().name().equals("REJECTED") || order.getOrderStatus().name().equals("CANCELLED")) {
-            return;
+        if (order == null) {
+            return Optional.empty();
         }
 
         Instrument instrument = instrumentMapper
@@ -66,21 +63,20 @@ public class OrderSettlementService {
         if (settlementDecision.outcome().isRejected()) {
             int updatedRows = orderMapper.rejectOrderIfNew(orderId, transactionDate);
             if (updatedRows == 0) {
-                return;
+                return Optional.empty();
             }
 
-            publishResolution(order, instrument, settlementDecision.outcome(), transactionDate);
-            return;
+            return Optional.of(orderResolvedEvent(order, instrument, settlementDecision.outcome(), transactionDate));
         }
 
         BigDecimal executionPrice = settlementDecision.executionPrice();
         int updatedRows = orderMapper.fillOrderIfNew(orderId, executionPrice, transactionDate);
         if (updatedRows == 0) {
-            return;
+            return Optional.empty();
         }
 
         applyFilledSettlement(order, settlementDecision.account(), settlementDecision.holding(), executionPrice);
-        publishResolution(order, instrument, ExecutionOutcome.filled(executionPrice), transactionDate);
+        return Optional.of(orderResolvedEvent(order, instrument, ExecutionOutcome.filled(executionPrice), transactionDate));
     }
 
     private SettlementDecision determineSettlementDecision(
@@ -179,7 +175,10 @@ public class OrderSettlementService {
         }
 
         long remainingQuantity = holding.getQuantity() - order.getQuantity();
-        holdingMapper.updateHoldingQuantity(holding.getHoldingId(), remainingQuantity);
+        int holdingUpdatedRows = holdingMapper.updateHoldingQuantity(holding.getHoldingId(), remainingQuantity);
+        if (holdingUpdatedRows == 0) {
+            throw new IllegalStateException("Holding update affected no rows");
+        }
     }
 
     private void upsertBuyHolding(Order order, BigDecimal executionPrice) {
@@ -194,7 +193,10 @@ public class OrderSettlementService {
                     executionPrice,
                     order.getAccountId(),
                     order.getInstrumentId());
-            holdingMapper.insertHolding(newHolding);
+            int insertedRows = holdingMapper.insertHolding(newHolding);
+            if (insertedRows == 0) {
+                throw new IllegalStateException("Holding insert affected no rows");
+            }
             return;
         }
 
@@ -206,29 +208,30 @@ public class OrderSettlementService {
                 .add(incomingValue)
                 .divide(BigDecimal.valueOf(newQuantity), 2, RoundingMode.HALF_UP);
 
-        holdingMapper.updateHoldingQuantityAndPrice(
+        int updatedRows = holdingMapper.updateHoldingQuantityAndPrice(
                 existingHolding.getHoldingId(),
                 newQuantity,
                 newAveragePrice);
+        if (updatedRows == 0) {
+            throw new IllegalStateException("Holding update affected no rows");
+        }
     }
 
-    private void publishResolution(
+    private OrderResolvedEvent orderResolvedEvent(
             Order order,
             Instrument instrument,
             ExecutionOutcome outcome,
             OffsetDateTime transactionDate) {
-
-        orderResolvedAfterCommitListener.onOrderResolved(
-                new OrderResolvedEvent(
-                        outcome.isFilled() ? "ORDER_FILLED" : "ORDER_REJECTED",
-                        order.getOrderId(),
-                        order.getAccountId(),
-                        instrument == null ? String.valueOf(order.getInstrumentId()) : instrument.getInstrumentTicker(),
-                        order.getOrderSide(),
-                        order.getQuantity(),
-                        outcome.executionPrice(),
-                        outcome.rejectReason(),
-                        transactionDate));
+        return new OrderResolvedEvent(
+                outcome.isFilled() ? "ORDER_FILLED" : "ORDER_REJECTED",
+                order.getOrderId(),
+                order.getAccountId(),
+                instrument == null ? String.valueOf(order.getInstrumentId()) : instrument.getInstrumentTicker(),
+                order.getOrderSide(),
+                order.getQuantity(),
+                outcome.executionPrice(),
+                outcome.rejectReason(),
+                transactionDate);
     }
 
     private static BigDecimal calculateOrderValue(BigDecimal price, long quantity) {

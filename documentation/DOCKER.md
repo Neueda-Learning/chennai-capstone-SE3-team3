@@ -59,6 +59,7 @@ docker compose ps
 docker compose logs -f backend
 ```
 
+
 Compose v1 fallback:
 ```bash
 export CORE_JAVA_REPO_URL="$(git config --get remote.origin.url)"
