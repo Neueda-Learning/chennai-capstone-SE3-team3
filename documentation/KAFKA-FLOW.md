@@ -117,7 +117,7 @@ docker-compose exec kafka kafka-console-consumer \
   --property print.partition=true \
   --property print.timestamp=true
 ```
-```
+
 
 ### 3) Run backend and trade_executor on Windows
 
